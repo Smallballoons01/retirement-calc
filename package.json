@@ -1,0 +1,87 @@
+{
+  "name": "@dsh-plugin/retirement-calc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Retirement planner for DeepSeek Harness: China's statutory retirement age under the 2025 phased-delay reform, a live countdown, and a projected monthly pension — as a tool, a sidebar panel, and an embedded skill",
+  "keywords": [
+    "retirement",
+    "pension",
+    "calculator",
+    "china",
+    "social-security",
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-skill"
+  ],
+  "author": "light",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Smallballoons01/retirement-calc.git"
+  },
+  "homepage": "https://github.com/Smallballoons01/retirement-calc#readme",
+  "bugs": {
+    "url": "https://github.com/Smallballoons01/retirement-calc/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./core": "./core.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "core.js",
+    "skill.js",
+    "cordis.patch.yml",
+    "dist/",
+    "web/",
+    "scripts/",
+    "skills/",
+    "README.md",
+    "README.zh.md"
+  ],
+  "scripts": {
+    "test": "node --test test/core.test.js test/plugin.test.js test/integration.test.js",
+    "web": "node scripts/build-web.mjs",
+    "web:check": "node scripts/build-web.mjs --check",
+    "verify": "node scripts/verify-web.mjs",
+    "verify:plugin": "node scripts/verify-plugin.mjs",
+    "skill": "node scripts/generate-skill.mjs",
+    "skill:check": "node scripts/generate-skill.mjs --check",
+    "audit": "node scripts/audit-secrets.mjs",
+    "check": "npm run audit && npm run test && npm run skill:check && npm run web:check && npm run verify && npm run verify:plugin"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-llm": "0.1.6-alpha.1",
+    "@deepseek-ai/dsh-tools": "0.1.6-alpha.1",
+    "@deepseek-ai/schemastery": "3.18.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-settings": "*",
+    "@deepseek-ai/dsh-skill": "*",
+    "@deepseek-ai/dsh-system-prompt": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  }
+}

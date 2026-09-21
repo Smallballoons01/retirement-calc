@@ -1,0 +1,29 @@
+# 依赖是宿主提供的 peer dependency，用软链复用本机 harness，不入库。
+node_modules/
+
+# dist/ 刻意**不**忽略：里面那个单文件计算器就是拿来直接发给别人用的，
+# 它在仓库里比在构建日志里更有价值。
+#
+# 但它只由 `npm run web` 从 web/ 与 core.js 生成 —— 手改 dist 会被
+# `npm run web:check` 拒绝，所以别直接编辑它。
+# dist/
+
+# 用户档案。默认落在 $DSH_HOME/retirement-calc.json，但把 stateFile 指到
+# 仓库里调试过的人可能把它留下 —— 里面是出生年月与缴费情况，不该公开。
+retirement-calc.json
+profile.json
+
+# 编辑器与系统
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 日志与临时文件
+*.log
+*.tmp
+npm-debug.log*
+
+# 环境变量。本包不使用任何环境变量，列在这里只是为了防止误建。
+.env
+.env.*

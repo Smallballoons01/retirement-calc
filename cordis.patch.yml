@@ -1,0 +1,25 @@
+# retirement-calc bundle patch.
+#
+# 挂载这个包会插入一行插件。下面的默认值是完整的 —— 用户自己的 patch 会整体
+# 替换这一项配置，所以要覆盖其中某个字段时，记得把其余字段一并写全。
+#
+# 安装：
+#
+#   dsh plugin --profile web add /path/to/retirement_calc
+#
+# 该命令会把包追加进 profile 的 `dsh.profile.bundles`，这一层负责把插件行挂上。
+#
+# 如果 profile 自己的 cordis.patch.yml 里已经有一行 `retirement-calc`，
+# 请先删掉它：两行同名插件会各自注册一次 `/retire/api` 前缀路由，
+# 重复路由会让插件树启动失败。
+- insert:
+    - id: retirement-calc
+      name: '@dsh-plugin/retirement-calc'
+      config:
+        # 向助手注入一段说明，告诉它什么时候该调 retirement_plan。
+        promptSection: true
+        # 注册内嵌的 retirement-planner 技能，让模型拿到完整口径与话术。
+        skill: true
+        # 档案文件位置。默认落在 $DSH_HOME/retirement-calc.json ——
+        # 里面是用户的出生年月与缴费情况，不该进仓库，所以刻意不给默认路径。
+        # stateFile: /absolute/path/retirement-calc.json

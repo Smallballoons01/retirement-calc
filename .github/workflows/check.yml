@@ -1,0 +1,46 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Deliberately no `npm install`: the package has zero runtime dependencies
+      # and its only packages are host-provided peers that are not on npm, so an
+      # install step would fail for reasons that have nothing to do with the code
+      # under test. Everything below runs on a bare checkout.
+
+      - name: 敏感信息扫描
+        run: npm run audit
+
+      - name: 单元与集成测试
+        run: npm test
+
+      - name: 产物一致性（技能文件 / 单文件网页）
+        run: npm run skill:check && npm run web:check
+
+      # ubuntu-latest ships Google Chrome, which scripts/verify-web.mjs finds on
+      # its own. The plugin-level suite skips itself here because the harness
+      # packages are not published — that is expected, not a gap to paper over.
+      - name: 浏览器端端到端
+        run: npm run verify

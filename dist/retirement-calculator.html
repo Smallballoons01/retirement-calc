@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>退休养老测算 · 实时</title>
+<style>
+  :root {
+    --bg: #eef1f8;
+    --panel: #ffffff;
+    --ink: #101828;
+    --ink-2: #475467;
+    --ink-3: #98a2b3;
+    --line: #e4e7ec;
+    --line-2: #f2f4f7;
+    --brand: #3055d6;
+    --brand-ink: #21389a;
+    --brand-soft: #eaefff;
+    --accent: #b45309;
+    --accent-soft: #fff4e6;
+    --ok: #067647;
+    --ok-soft: #ecfdf3;
+    --warn: #b54708;
+    --warn-soft: #fffaeb;
+    --danger: #b42318;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .18);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-feature-settings: "tnum" 1;
+    -webkit-font-smoothing: antialiased;
+    padding: 24px 20px 56px;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ── 页头 ───────────────────────────────────────────── */
+  .masthead { max-width: 1280px; margin: 0 auto 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .masthead h1 { margin: 0 0 4px; font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+  .masthead p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .masthead .stamp { color: var(--ink-3); font-size: 12px; text-align: right; }
+
+  /* ── 主布局 ─────────────────────────────────────────── */
+  .layout {
+    max-width: 1280px; margin: 0 auto;
+    display: grid; gap: 18px;
+    grid-template-columns: minmax(0, 430px) minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  /* ── 左侧表单 ───────────────────────────────────────── */
+  form.panel { padding: 4px 18px 18px; }
+  form.panel > section { padding: 16px 0 4px; border-bottom: 1px solid var(--line-2); }
+  form.panel > section:last-of-type { border-bottom: 0; }
+  form.panel h2 {
+    margin: 0 0 12px; font-size: 12px; font-weight: 700;
+    color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  .field { margin-bottom: 13px; }
+  .field > label { display: block; font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; font-weight: 500; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { min-width: 0; }
+
+  input[type=number], select {
+    width: 100%; padding: 7px 10px; font: inherit; font-variant-numeric: tabular-nums;
+    color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 9px;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  input[type=number]:focus, select:focus {
+    outline: none; border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  .unit { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; flex: 0 0 auto; }
+
+  /* 分段控件 */
+  .seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg label {
+    flex: 1; text-align: center; padding: 7px 6px; font-size: 12.5px;
+    color: var(--ink-2); cursor: pointer; background: #fff; user-select: none;
+    border-right: 1px solid var(--line); transition: background .12s, color .12s;
+    line-height: 1.35;
+  }
+  .seg label:last-child { border-right: 0; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + span { color: #fff; }
+  .seg label:has(input:checked) { background: var(--brand); color: #fff; font-weight: 600; }
+
+  /* 滑块 */
+  .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .slider-head b { font-size: 15px; color: var(--brand-ink); font-weight: 700; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 20px;
+    background: transparent; cursor: pointer; margin: 0;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 5px; border-radius: 3px; background: var(--line);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5.5px;
+    border-radius: 50%; background: var(--brand); border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(48, 85, 214, .45);
+  }
+
+  details.advanced { margin-top: 6px; }
+  details.advanced > summary {
+    cursor: pointer; font-size: 12.5px; color: var(--brand); font-weight: 600;
+    padding: 8px 0; list-style: none;
+  }
+  details.advanced > summary::-webkit-details-marker { display: none; }
+  details.advanced > summary::before { content: '▸ '; display: inline-block; transition: transform .15s; }
+  details.advanced[open] > summary::before { transform: rotate(90deg); }
+
+  .hint { font-size: 11.5px; color: var(--ink-3); margin-top: 5px; line-height: 1.5; }
+  .hint.warn { color: var(--warn); }
+
+  /* ── 右侧结果 ───────────────────────────────────────── */
+  .results { display: grid; gap: 18px; }
+
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+  @media (max-width: 620px) { .hero { grid-template-columns: 1fr; } }
+
+  .hero-card { padding: 22px 24px 20px; position: relative; }
+  .hero-card + .hero-card { border-left: 1px solid var(--line); }
+  @media (max-width: 620px) { .hero-card + .hero-card { border-left: 0; border-top: 1px solid var(--line); } }
+
+  .hero-card .kicker {
+    font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    color: var(--ink-3); display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  }
+  .hero-card .kicker .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .hero-figure { display: flex; align-items: baseline; gap: 6px; }
+  .hero-figure .value {
+    font-size: 46px; font-weight: 750; line-height: 1.05; letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-figure .suffix { font-size: 15px; color: var(--ink-2); font-weight: 600; }
+
+  .card-days .dot { background: #f59e0b; }
+  .card-days .value { color: var(--accent); }
+  .card-pension .dot { background: var(--brand); }
+  .card-pension .value { color: var(--brand); }
+
+  .hero-note { margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
+  .hero-sub { margin-top: 3px; font-size: 12px; color: var(--ink-3); }
+
+  /* 指标网格 */
+  .metrics { padding: 16px 20px 18px; }
+  .metrics h2 { margin: 0 0 12px; font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line-2); border-radius: 10px; overflow: hidden; }
+  .metric { background: #fff; padding: 11px 13px; }
+  .metric dt { font-size: 11.5px; color: var(--ink-3); margin: 0 0 3px; }
+  .metric dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .metric dd small { font-size: 11.5px; font-weight: 500; color: var(--ink-3); margin-left: 3px; }
+  .metric dd.pos { color: var(--ok); }
+  .metric dd.neg { color: var(--danger); }
+
+  /* 明细 */
+  .breakdown { padding: 16px 20px 20px; }
+  .breakdown h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; }
+  .line { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .line:last-child { border-bottom: 0; }
+  .line .desc { min-width: 0; }
+  .line .desc b { display: block; font-weight: 600; font-size: 13.5px; }
+  .line .desc code {
+    display: block; margin-top: 2px; font-size: 11.5px; color: var(--ink-3);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    white-space: normal; word-break: break-word;
+  }
+  .line .amt { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .line.total { border-bottom: 0; border-top: 2px solid var(--ink); margin-top: 6px; padding-top: 12px; }
+  .line.total .desc b { font-size: 14.5px; }
+  .line.total .amt { font-size: 19px; color: var(--brand); }
+
+  .callout { margin-top: 12px; padding: 11px 13px; border-radius: 10px; font-size: 12.5px; line-height: 1.55; }
+  .callout.ok { background: var(--ok-soft); color: var(--ok); }
+  .callout.warn { background: var(--warn-soft); color: var(--warn); }
+  .callout.info { background: var(--brand-soft); color: var(--brand-ink); }
+  .callout b { font-weight: 700; }
+
+  /* 敏感性 */
+  .sensitivity { padding: 16px 20px 20px; }
+  .sensitivity h2 { margin: 0 0 4px; font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; }
+  .sensitivity p.lead { margin: 0 0 12px; font-size: 12.5px; color: var(--ink-2); }
+  table.sens { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.sens th, table.sens td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line-2); font-variant-numeric: tabular-nums; }
+  table.sens th { font-size: 11.5px; color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); }
+  table.sens th:first-child, table.sens td:first-child { text-align: left; }
+  table.sens tr.base td { background: var(--brand-soft); font-weight: 650; }
+  table.sens tr.base td:first-child { border-radius: 8px 0 0 8px; }
+  table.sens tr.base td:last-child { border-radius: 0 8px 8px 0; }
+  .delta { font-size: 11.5px; font-weight: 600; margin-left: 5px; }
+  .delta.up { color: var(--ok); }
+  .delta.down { color: var(--danger); }
+
+  /* 底部动作 */
+  .actions { max-width: 1280px; margin: 18px auto 0; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 600; font-size: 13px; cursor: pointer;
+    padding: 9px 17px; border-radius: 9px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); transition: background .12s, border-color .12s;
+  }
+  button:hover { border-color: var(--ink-3); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  button.primary:hover { background: var(--brand-ink); border-color: var(--brand-ink); }
+
+  footer.disclaimer {
+    max-width: 1280px; margin: 26px auto 0; color: var(--ink-3); font-size: 11.5px;
+    line-height: 1.7; border-top: 1px solid var(--line); padding-top: 14px;
+  }
+  footer.disclaimer b { color: var(--ink-2); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translate(-50%, 14px);
+    background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 9px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>退休养老测算</h1>
+    <p>改动任意一项，右侧结果实时重算。计算口径依据国家现行法规，明细逐项可核。</p>
+  </div>
+  <div class="stamp">基准时刻<br><span id="asOf" class="num"></span></div>
+</header>
+
+<div class="layout">
+
+  <form class="panel" id="form" autocomplete="off">
+
+    <section>
+      <h2>我是谁</h2>
+
+      <div class="field">
+        <label>出生年月</label>
+        <div class="row">
+          <input type="number" id="birthYear" min="1940" max="2010" step="1">
+          <span class="unit">年</span>
+          <select id="birthMonth"></select>
+          <span class="unit">月</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>参保人群类别（决定原法定退休年龄）</label>
+        <div class="seg" id="categorySeg"></div>
+        <div class="hint" id="categoryHint"></div>
+      </div>
+
+      <div class="field">
+        <label>参保身份</label>
+        <div class="seg" id="insuredSeg"></div>
+        <div class="hint">统筹账户的缴纳比例不影响个人账户积累，因此不改变测算结果，仅作记录。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>参保情况</h2>
+
+      <div class="field">
+        <label>累计已缴月数</label>
+        <div class="row">
+          <input type="number" id="paidYears" min="0" max="50" step="1">
+          <span class="unit">年</span>
+          <input type="number" id="paidMonthsExtra" min="0" max="11" step="1">
+          <span class="unit">月</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>已缴部分的平均缴费指数（缴费档次）</label>
+        <div class="slider-head"><span class="hint" style="margin:0">下限 0.6 档，上限 3.0 档</span><b id="paidIndexVal"></b></div>
+        <input type="range" id="paidIndex" min="0.6" max="3" step="0.01">
+      </div>
+
+      <div class="field">
+        <label>计划继续缴费月数</label>
+        <div class="row">
+          <input type="number" id="futureYears" min="0" max="50" step="1">
+          <span class="unit">年</span>
+          <input type="number" id="futureMonthsExtra" min="0" max="11" step="1">
+          <span class="unit">月</span>
+        </div>
+        <div class="hint">中间断缴的年头，账户余额仍在计息，只是不再计入本金。</div>
+      </div>
+
+      <div class="field">
+        <label>未来缴费的缴费指数</label>
+        <div class="slider-head"><span class="hint" style="margin:0">按 60% 档缴则填 0.6</span><b id="futureIndexVal"></b></div>
+        <input type="range" id="futureIndex" min="0.6" max="3" step="0.01">
+      </div>
+
+      <div class="field">
+        <label>当前个人账户累计储存额</label>
+        <div class="row">
+          <input type="number" id="accountBalance" min="0" step="100">
+          <span class="unit">元</span>
+        </div>
+        <div class="hint">查询路径：支付宝 → 市民中心 → 社保查询 → 个人权益单。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>经济假设</h2>
+
+      <div class="field">
+        <label>退休地（决定默认计发基数）</label>
+        <select id="province"></select>
+        <div class="hint" id="provinceHint"></div>
+      </div>
+
+      <div class="field">
+        <label>养老金计发基数</label>
+        <div class="row">
+          <input type="number" id="baseAmount" min="0" step="1">
+          <span class="unit">元/月</span>
+        </div>
+        <div class="hint" id="baseHint"></div>
+      </div>
+
+      <details class="advanced">
+        <summary>高级参数（视同缴费年限、增长率、记账利率）</summary>
+
+        <div class="field">
+          <label>视同缴费年限（统账结合前的连续工龄）</label>
+          <div class="row">
+            <input type="number" id="deemedYears" min="0" max="40" step="1">
+            <span class="unit">年</span>
+            <input type="number" id="deemedMonthsExtra" min="0" max="11" step="1">
+            <span class="unit">月</span>
+          </div>
+          <div class="hint">没有视同缴费年限就留 0；有的话会额外产生过渡性养老金。</div>
+        </div>
+
+        <div class="field">
+          <label>视同缴费指数</label>
+          <div class="slider-head"><span class="hint" style="margin:0">一般与本人实际平均指数接近</span><b id="deemedIndexVal"></b></div>
+          <input type="range" id="deemedIndex" min="0.6" max="3" step="0.01">
+        </div>
+
+        <div class="field">
+          <label>计发基数年增长率</label>
+          <div class="row">
+            <input type="number" id="baseGrowthRate" min="-5" max="15" step="0.1">
+            <span class="unit">%</span>
+          </div>
+          <div class="hint">近年各省多在 1%–3% 之间，黑龙江 2025 年为 7.99%。</div>
+        </div>
+
+        <div class="field">
+          <label>个人账户记账利率</label>
+          <div class="row">
+            <input type="number" id="accountInterestRate" min="0" max="15" step="0.05">
+            <span class="unit">%</span>
+          </div>
+          <div class="hint">全国统一公布：2023 年 3.97%、2024 年 2.62%、2025 年 1.5%。</div>
+        </div>
+
+        <div class="field">
+          <label>过渡性养老金系数</label>
+          <div class="row">
+            <input type="number" id="transitionRate" min="0" max="5" step="0.1">
+            <span class="unit">%</span>
+          </div>
+          <div class="hint">各省在 1.0%–1.4% 之间，多数为 1.3%。</div>
+        </div>
+      </details>
+    </section>
+
+    <section>
+      <h2>弹性退休</h2>
+
+      <div class="field">
+        <label>弹性提前退休</label>
+        <div class="slider-head"><span class="hint" style="margin:0">最长 3 年，且不得低于原法定年龄</span><b id="earlyVal"></b></div>
+        <input type="range" id="earlyMonths" min="0" max="36" step="1">
+      </div>
+
+      <div class="field">
+        <label>弹性延后退休</label>
+        <div class="slider-head"><span class="hint" style="margin:0">最长 3 年，需与单位协商一致</span><b id="delayVal"></b></div>
+        <input type="range" id="delayMonths" min="0" max="36" step="1">
+      </div>
+      <div class="hint">两项互斥；同时设置时按提前处理。</div>
+    </section>
+
+  </form>
+
+  <div class="results">
+
+    <section class="panel hero">
+      <div class="hero-card card-days">
+        <div class="kicker"><span class="dot"></span>距离退休还有</div>
+        <div class="hero-figure">
+          <span class="value" id="daysValue">—</span>
+          <span class="suffix">天</span>
+        </div>
+        <div class="hero-note" id="daysNote"></div>
+        <div class="hero-sub" id="daysDate"></div>
+      </div>
+      <div class="hero-card card-pension">
+        <div class="kicker"><span class="dot"></span>预计每月养老金</div>
+        <div class="hero-figure">
+          <span class="suffix">￥</span>
+          <span class="value" id="pensionValue">—</span>
+        </div>
+        <div class="hero-note" id="pensionNote"></div>
+        <div class="hero-sub" id="pensionSub"></div>
+      </div>
+    </section>
+
+    <section class="panel metrics">
+      <h2>关键指标</h2>
+      <dl class="metric-grid" id="metricGrid"></dl>
+      <div id="statusCallout"></div>
+    </section>
+
+    <section class="panel breakdown">
+      <h2>计算明细</h2>
+      <div id="breakdown"></div>
+    </section>
+
+    <section class="panel sensitivity">
+      <h2>提高待遇的三种做法</h2>
+      <p class="lead">在其余条件不变的前提下，单独改变一项，看月养老金的变化。</p>
+      <table class="sens" id="sensTable"></table>
+    </section>
+
+  </div>
+</div>
+
+<div class="actions">
+  <button id="resetBtn">恢复默认</button>
+  <button id="copyBtn">复制测算结果</button>
+  <button class="primary" id="printBtn">打印 / 存为 PDF</button>
+</div>
+
+<footer class="disclaimer">
+  <b>口径说明。</b>
+  法定退休年龄按全国人大常委会 2024 年 9 月 13 日《关于实施渐进式延迟法定退休年龄的决定》计算：自 2025 年 1 月 1 日起，原 60 周岁的男职工每 4 个月延迟 1 个月至 63 周岁，原 55 周岁的女职工每 4 个月延迟 1 个月至 58 周岁，原 50 周岁的女职工每 2 个月延迟 1 个月至 55 周岁。
+  最低缴费年限 2029 年前为 15 年，自 2030 年起每年提高 6 个月，2039 年及以后为 20 年。
+  计发月数采用国发〔2005〕38 号附件，按办理退休时的满周岁年龄取值。
+  养老金 = 基础养老金 + 个人账户养老金 + 过渡性养老金（有视同缴费年限时）。
+  <br>
+  <b>本工具的定位是估算，不是承诺。</b>计发基数、记账利率、缴费基数上下限每年由各省重新公布，测算中的增长率是假设值；实际待遇以社保经办机构核定为准。
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+/* ── core.js（构建期内联） ── */
+/**
+ * retirement_calc/core.js — 中国城镇职工基本养老保险退休测算引擎。
+ *
+ * 纯逻辑、零依赖、ESM。同一份代码在 Node（测试 / DSH 插件宿主端）与浏览器
+ * （内联进单文件计算器）里运行，所以这里不碰任何 IO、不读时钟以外的环境。
+ *
+ * 计算口径全部来自公开法规，每一处都能追溯到文号：
+ *
+ * - **渐进式延迟法定退休年龄**（全国人大常委会 2024-09-13 决定）：
+ *   自 2025-01-01 起，原法定退休年龄 60 周岁的男性每 4 个月延迟 1 个月至 63 周岁；
+ *   原 55 周岁的女性每 4 个月延迟 1 个月至 58 周岁；原 50 周岁的女性每 2 个月
+ *   延迟 1 个月至 55 周岁。本例按「原退休时点距 2025-01 的月数」定位延迟档位。
+ * - **最低缴费年限**：2029-12-31 前仍为 15 年；自 2030 年起每年提高 6 个月，
+ *   2039 年及以后为 20 年。
+ * - **计发月数表**：国发〔2005〕38 号附件，按办理退休时的**满周岁**年龄取值
+ *   （例：50 周岁 11 个月退休，按 50 岁对应的 195 个月计发）。
+ * - **养老金构成**：基础养老金 + 个人账户养老金（+ 有视同缴费年限者的过渡性养老金）。
+ *
+ * @module core
+ */
+
+/** 引擎版本，随包发布。 */
+const ENGINE_VERSION = '0.1.0'
+
+/* ────────────────────────────────────────────────────────────────
+ * 1. 年月运算
+ *
+ * 全程用「月序号」（year * 12 + month - 1）做整数运算，避免 Date 的时区、
+ * 月末进位等坑。退休测算的最小粒度就是月，用整数最稳。
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 把 `{year, month}` 转成线性月序号。
+ * @param {{year: number, month: number}} ym 年月，month 为 1-12。
+ * @returns {number} 月序号。
+ */
+function monthIndexOf(ym) {
+  return ym.year * 12 + (ym.month - 1)
+}
+
+/**
+ * 月序号还原为 `{year, month}`。
+ * @param {number} index 月序号。
+ * @returns {{year: number, month: number}} 年月。
+ */
+function yearMonthOf(index) {
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 }
+}
+
+/**
+ * 年月加减若干个月。
+ * @param {{year: number, month: number}} ym 起始年月。
+ * @param {number} months 偏移月数，可为负。
+ * @returns {{year: number, month: number}} 结果年月。
+ */
+function addMonths(ym, months) {
+  return yearMonthOf(monthIndexOf(ym) + months)
+}
+
+/**
+ * 两个年月之间的整月数。
+ * @param {{year: number, month: number}} from 起始。
+ * @param {{year: number, month: number}} to 结束。
+ * @returns {number} 月数，to 早于 from 时为负。
+ */
+function monthsBetween(from, to) {
+  return monthIndexOf(to) - monthIndexOf(from)
+}
+
+/**
+ * 按出生年月与某个时点算年龄。
+ * @param {{year: number, month: number}} birth 出生年月。
+ * @param {{year: number, month: number}} at 时点年月。
+ * @returns {{years: number, months: number, totalMonths: number}} 年龄。
+ */
+function ageAt(birth, at) {
+  const totalMonths = monthsBetween(birth, at)
+  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12, totalMonths }
+}
+
+/** 把年月格式化成 `2041年3月`。 */
+function formatYearMonth(ym) {
+  return `${ym.year}年${ym.month}月`
+}
+
+/** 把年龄格式化成 `63岁` 或 `57岁1个月`。 */
+function formatAge(age) {
+  return age.months === 0 ? `${age.years}岁` : `${age.years}岁${age.months}个月`
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 2. 法定退休年龄（渐进式延迟）
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 三类参保人群的原法定退休年龄与延迟节奏。
+ *
+ * `step` 是「每多少个月延迟 1 个月」，`cap` 是累计延迟上限（月）。
+ * 两者都直接来自改革决定：男职工与原 55 岁女职工上限 36 个月（+3 岁），
+ * 原 50 岁女职工上限 60 个月（+5 岁）。
+ */
+const CATEGORIES = {
+  male: {
+    key: 'male',
+    label: '男职工',
+    shortLabel: '男',
+    originalAge: 60,
+    finalAge: 63,
+    step: 4,
+    cap: 36,
+    description: '男职工，原法定退休年龄 60 周岁，每 4 个月延迟 1 个月，至 63 周岁。',
+  },
+  female55: {
+    key: 'female55',
+    label: '女职工·管理技术岗',
+    shortLabel: '女（原55）',
+    originalAge: 55,
+    finalAge: 58,
+    step: 4,
+    cap: 36,
+    description: '原法定退休年龄 55 周岁的女职工（女干部、管理技术岗），每 4 个月延迟 1 个月，至 58 周岁。',
+  },
+  female50: {
+    key: 'female50',
+    label: '女职工·工人岗',
+    shortLabel: '女（原50）',
+    originalAge: 50,
+    finalAge: 55,
+    step: 2,
+    cap: 60,
+    description: '原法定退休年龄 50 周岁的女职工（工人岗），每 2 个月延迟 1 个月，至 55 周岁。',
+  },
+}
+
+/** 延迟退休改革的起算锚点：2025 年 1 月。 */
+const REFORM_ANCHOR = { year: 2025, month: 1 }
+
+/**
+ * 算某人的法定退休时点（不含弹性提前/延后）。
+ *
+ * 定位方式：先按原法定年龄算出「原本该退休的年月」，再看它与 2025-01 的距离。
+ * 距离为负（2024-12 及以前就该退）即不受新政影响；否则第 n 个 step 月区间延迟
+ * n 个月，并受 cap 封顶。
+ *
+ * 该式与官方对照表逐月一致：2025 年 1-4 月退休者延 1 个月，5-8 月延 2 个月，
+ * 9-12 月延 3 个月……
+ *
+ * @param {{year: number, month: number}} birth 出生年月。
+ * @param {keyof CATEGORIES} category 人群类别。
+ * @returns {{
+ *   category: string,
+ *   originalYearMonth: {year: number, month: number},
+ *   originalAge: number,
+ *   delayMonths: number,
+ *   yearMonth: {year: number, month: number},
+ *   age: {years: number, months: number, totalMonths: number},
+ *   atCeiling: boolean,
+ * }} 法定退休信息。
+ */
+function legalRetirement(birth, category) {
+  const spec = CATEGORIES[category]
+  if (spec === undefined) throw new Error(`未知的人群类别：${category}`)
+
+  const originalIndex = monthIndexOf(birth) + spec.originalAge * 12
+  const offset = originalIndex - monthIndexOf(REFORM_ANCHOR)
+  const delayMonths = offset < 0
+    ? 0
+    : Math.min(spec.cap, Math.floor(offset / spec.step) + 1)
+
+  const retirementIndex = originalIndex + delayMonths
+  const yearMonth = yearMonthOf(retirementIndex)
+  return {
+    category,
+    originalYearMonth: yearMonthOf(originalIndex),
+    originalAge: spec.originalAge,
+    delayMonths,
+    yearMonth,
+    age: ageAt(birth, yearMonth),
+    atCeiling: delayMonths === spec.cap,
+  }
+}
+
+/**
+ * 应用弹性退休选择。
+ *
+ * 规则（改革决定原文）：达到最低缴费年限可自愿提前，**最长 3 年**，且不得低于
+ * 原法定退休年龄；达到法定退休年龄后经与单位协商可延迟，**最长 3 年**。
+ *
+ * @param {{year: number, month: number}} birth 出生年月。
+ * @param {keyof CATEGORIES} category 人群类别。
+ * @param {{earlyMonths?: number, delayMonths?: number}} flex 弹性选择，单位月。
+ * @returns {{
+ *   yearMonth: {year: number, month: number},
+ *   age: {years: number, months: number, totalMonths: number},
+ *   appliedMonths: number,
+ *   mode: 'legal'|'early'|'delay',
+ *   clamped: boolean,
+ *   reason: string,
+ * }} 实际退休时点。
+ */
+function applyFlexible(birth, category, flex = {}) {
+  const spec = CATEGORIES[category]
+  const legal = legalRetirement(birth, category)
+  const legalIndex = monthIndexOf(legal.yearMonth)
+
+  const earlyRequested = Math.max(0, Math.round(flex.earlyMonths ?? 0))
+  const delayRequested = Math.max(0, Math.round(flex.delayMonths ?? 0))
+
+  // 提前与延后互斥；同时给出时以提前为准，并把原因写回去，避免静默吞掉输入。
+  const early = Math.min(earlyRequested, 36)
+  const late = earlyRequested > 0 ? 0 : Math.min(delayRequested, 36)
+
+  // 提前的下界是原法定退休年龄，不是「法定年龄 - 3 年」。
+  const earliestIndex = monthIndexOf(birth) + spec.originalAge * 12
+  let applied = legalIndex - early + late
+  let clamped = false
+  if (applied < earliestIndex) {
+    applied = earliestIndex
+    clamped = true
+  }
+
+  const yearMonth = yearMonthOf(applied)
+  const mode = applied < legalIndex ? 'early' : applied > legalIndex ? 'delay' : 'legal'
+  const notes = []
+  if (earlyRequested > 36) notes.push('弹性提前最长 3 年，已按 36 个月封顶')
+  if (delayRequested > 36) notes.push('弹性延后最长 3 年，已按 36 个月封顶')
+  if (earlyRequested > 0 && delayRequested > 0) notes.push('提前与延后互斥，已按提前处理')
+  if (clamped) notes.push(`提前不得低于原法定退休年龄 ${spec.originalAge} 周岁，已上收到该年龄`)
+
+  return {
+    yearMonth,
+    age: ageAt(birth, yearMonth),
+    appliedMonths: applied - legalIndex,
+    mode,
+    clamped,
+    reason: notes.join('；'),
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 3. 最低缴费年限
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 领取基本养老金的最低缴费年限（按月计）。
+ *
+ * 2029 年及以前退休仍为 15 年（180 个月）；自 2030 年起每年提高 6 个月，
+ * 到 2039 年达到 20 年（240 个月）后不再提高。
+ *
+ * @param {{year: number, month: number}} retireYearMonth 退休年月。
+ * @returns {number} 最低缴费月数。
+ */
+function minimumContributionMonths(retireYearMonth) {
+  const year = retireYearMonth.year
+  if (year <= 2029) return 180
+  return Math.min(240, 180 + (year - 2029) * 6)
+}
+
+/** 把月数格式化成 `19年6个月`。 */
+function formatMonths(months) {
+  const total = Math.max(0, Math.round(months))
+  const years = Math.floor(total / 12)
+  const rest = total % 12
+  if (years === 0) return `${rest}个月`
+  if (rest === 0) return `${years}年`
+  return `${years}年${rest}个月`
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 4. 个人账户养老金计发月数表
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 个人账户养老金计发月数表（国发〔2005〕38 号附件）。
+ * 键为办理退休时的**满周岁**年龄。
+ */
+const ANNUITY_MONTHS_TABLE = Object.freeze({
+  40: 233, 41: 230, 42: 226, 43: 223, 44: 220, 45: 216, 46: 212, 47: 208,
+  48: 204, 49: 199, 50: 195, 51: 190, 52: 185, 53: 180, 54: 175, 55: 170,
+  56: 164, 57: 158, 58: 152, 59: 145, 60: 139, 61: 132, 62: 125, 63: 117,
+  64: 109, 65: 101, 66: 93, 67: 84, 68: 75, 69: 65, 70: 56,
+})
+
+/**
+ * 查计发月数。按满周岁取值：40 岁以下按 40 岁，70 岁以上按 70 岁。
+ * @param {number} ageYears 退休时的周岁年龄（可为小数，内部向下取整）。
+ * @returns {number} 计发月数。
+ */
+function annuityMonths(ageYears) {
+  const age = Math.min(70, Math.max(40, Math.floor(ageYears)))
+  return ANNUITY_MONTHS_TABLE[age]
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 5. 各省养老金计发基数
+ *
+ * 计发基数每年由省级人社厅公布，用于替代早期的「上年度在岗职工月平均工资」。
+ * 数据只作**默认值**，面板与工具都允许覆盖 —— 计发基数会随年份更新，内置表
+ * 迟早会过期，所以每一项都带 `year` 与 `status`（published = 官方已公布，
+ * reference = 沿用上一年度，manual = 未收录需手工填写）。
+ * ──────────────────────────────────────────────────────────────── */
+
+/** 省级计发基数默认表。金额单位为元/月。 */
+const PROVINCES = Object.freeze([
+  { code: 'shanghai', name: '上海', base: 12434, year: 2025, status: 'published' },
+  { code: 'tibet', name: '西藏', base: 11777, year: 2025, status: 'published' },
+  { code: 'beijing', name: '北京', base: 11883, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'guangdong', name: '广东', base: 9493, year: 2025, status: 'published', note: '深圳单独公布，未包含' },
+  { code: 'qinghai', name: '青海', base: 9056, year: 2025, status: 'published' },
+  { code: 'jiangsu', name: '江苏', base: 8917, year: 2025, status: 'published' },
+  { code: 'xinjiang', name: '新疆', base: 8448, year: 2025, status: 'published' },
+  { code: 'zhejiang', name: '浙江', base: 8433, year: 2025, status: 'published' },
+  { code: 'ningxia', name: '宁夏', base: 8366, year: 2025, status: 'published' },
+  { code: 'yunnan', name: '云南', base: 8265, year: 2025, status: 'published' },
+  { code: 'neimenggu', name: '内蒙古', base: 8179, year: 2025, status: 'published' },
+  { code: 'fujian', name: '福建', base: 7932, year: 2025, status: 'published' },
+  { code: 'hunan', name: '湖南', base: 7694, year: 2025, status: 'published' },
+  { code: 'heilongjiang', name: '黑龙江', base: 7570, year: 2025, status: 'published' },
+  { code: 'hebei', name: '河北', base: 7410, year: 2025, status: 'published' },
+  { code: 'liaoning', name: '辽宁', base: 7346, year: 2025, status: 'published', note: '不含沈阳（8390）、大连（8956）' },
+  { code: 'guizhou', name: '贵州', base: 7324.5, year: 2025, status: 'published' },
+  { code: 'jilin', name: '吉林', base: 7322, year: 2025, status: 'published', note: '不含长春（7978.25）' },
+  { code: 'tianjin', name: '天津', base: 9232, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'hubei', name: '湖北', base: 8613, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'sichuan', name: '四川', base: 8321, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'chongqing', name: '重庆', base: 8160, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'hainan', name: '海南', base: 8131, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'anhui', name: '安徽', base: 7842, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'shandong', name: '山东', base: 7678, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值；菏泽另计' },
+  { code: 'shanxi', name: '山西', base: 7111, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'jiangxi', name: '江西', base: 6916, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'guangxi', name: '广西', base: 6847, year: 2024, status: 'reference', note: '2025 年基数未公布，沿用 2024 年值' },
+  { code: 'henan', name: '河南', base: 0, year: 0, status: 'manual', note: '未收录，请填当地最新计发基数' },
+  { code: 'shaanxi', name: '陕西', base: 0, year: 0, status: 'manual', note: '未收录，请填当地最新计发基数' },
+  { code: 'gansu', name: '甘肃', base: 0, year: 0, status: 'manual', note: '未收录，请填当地最新计发基数' },
+  { code: 'shenzhen', name: '深圳', base: 13730, year: 2023, status: 'reference', note: '深圳单独公布，此处为 2023 年值，务必替换' },
+])
+
+/** 省份未收录时使用的通用兜底基数，避免出现 0 元/月的荒谬结果。 */
+const FALLBACK_BASE_AMOUNT = 7000
+
+/**
+ * 按省份代码取省份记录。
+ * @param {string} code 省份代码。
+ * @returns {typeof PROVINCES[number] | undefined} 省份记录。
+ */
+function findProvince(code) {
+  return PROVINCES.find(province => province.code === code)
+}
+
+/**
+ * 某省份的默认计发基数。
+ *
+ * 面板与 normalizeInput 都调它，保证「输入框里显示的数」与「实际参与计算的数」
+ * 是同一个，不会出现表单空白但结果照算的口径分裂。
+ * @param {string} code 省份代码。
+ * @returns {number} 计发基数（元/月）。
+ */
+function defaultBaseFor(code) {
+  const province = findProvince(code)
+  return province !== undefined && province.base > 0 ? province.base : FALLBACK_BASE_AMOUNT
+}
+
+/**
+ * 某省份默认计发基数对应的年份。
+ * @param {string} code 省份代码。
+ * @returns {number} 年份。
+ */
+function defaultBaseYearFor(code) {
+  const province = findProvince(code)
+  return province !== undefined && province.year > 0 ? province.year : DEFAULT_INPUT.baseYear
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 6. 默认输入
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 一份完整的默认输入。所有字段都可以被覆盖，`normalizeInput` 负责兜底，
+ * 参数面板和工具调用都从这份结构出发。
+ */
+const DEFAULT_INPUT = Object.freeze({
+  // —— 个人信息 ——
+  birthYear: 1990,
+  birthMonth: 1,
+  category: 'male',            // male | female55 | female50
+  province: 'guangdong',
+
+  // —— 参保情况 ——
+  insuredType: 'employee',     // employee 职工 | flexible 灵活就业
+  paidMonths: 0,               // 已缴月数（累计，含视同缴费前的实际缴费）
+  paidIndex: 0.6,              // 已缴部分的平均缴费指数（0.6 = 60% 档）
+  futureMonths: 0,             // 计划继续缴费的月数
+  futureIndex: 0.6,            // 未来缴费指数
+  accountBalance: 0,           // 当前个人账户累计储存额（元）
+  deemedMonths: 0,             // 视同缴费年限（月），1990 年代统账结合前的工龄
+  deemedIndex: 0.6,            // 视同缴费指数
+
+  // —— 经济假设 ——
+  baseAmount: 9493,            // 当年计发基数（元/月）
+  baseYear: 2025,              // 计发基数对应年份
+  baseGrowthRate: 0.02,        // 计发基数年增长率
+  accountInterestRate: 0.015,  // 个人账户记账利率（2025 年全国口径 1.5%）
+  transitionRate: 0.013,       // 过渡性养老金系数（各省 1.0%-1.4%）
+  indexFloorFactor: false,     // 是否启用「指数低于 0.6 时折减」的地方规则（广东等）
+
+  // —— 弹性退休 ——
+  earlyMonths: 0,              // 弹性提前月数（≤36）
+  delayMonths: 0,              // 弹性延后月数（≤36）
+})
+
+/** 数值字段的兜底与边界。 */
+function num(value, fallback, min = -Infinity, max = Infinity) {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
+/**
+ * 把外部输入补齐成完整、合法的一份。
+ *
+ * 工具调用、网页表单、设置页三条输入路径的字段都可能缺，统一在这里兜底，
+ * 下游计算就不必再做存在性判断。
+ *
+ * @param {Partial<typeof DEFAULT_INPUT>} input 外部输入。
+ * @returns {typeof DEFAULT_INPUT} 完整输入。
+ */
+function normalizeInput(input = {}) {
+  const province = findProvince(input.province) ?? findProvince(DEFAULT_INPUT.province)
+  // 只有正数才算「显式指定」；空串、0、NaN 一律回落到省份默认表。
+  //
+  // baseYear 上的这个判断不是形式主义：0 是个合法数字，直接交给 `num()` 会被
+  // clamp 到下限（2000 年），于是计发基数被推了二十多年的复利，月养老金能虚高
+  // 六成。持久化档案里「0 = 跟随省份」是常见状态，所以这条路径一定会被走到。
+  const hasExplicitBase = Number.isFinite(Number(input.baseAmount)) && Number(input.baseAmount) > 0
+  const hasExplicitBaseYear = Number.isFinite(Number(input.baseYear)) && Number(input.baseYear) > 0
+
+  const category = CATEGORIES[input.category] === undefined ? DEFAULT_INPUT.category : input.category
+  const insuredType = input.insuredType === 'flexible' ? 'flexible' : 'employee'
+
+  return {
+    birthYear: num(input.birthYear, DEFAULT_INPUT.birthYear, 1940, 2010),
+    birthMonth: Math.round(num(input.birthMonth, DEFAULT_INPUT.birthMonth, 1, 12)),
+    category,
+    province: province.code,
+
+    insuredType,
+    paidMonths: Math.round(num(input.paidMonths, DEFAULT_INPUT.paidMonths, 0, 600)),
+    paidIndex: num(input.paidIndex, DEFAULT_INPUT.paidIndex, 0.1, 5),
+    futureMonths: Math.round(num(input.futureMonths, DEFAULT_INPUT.futureMonths, 0, 600)),
+    futureIndex: num(input.futureIndex, DEFAULT_INPUT.futureIndex, 0.1, 5),
+    accountBalance: num(input.accountBalance, DEFAULT_INPUT.accountBalance, 0, 1e9),
+    deemedMonths: Math.round(num(input.deemedMonths, DEFAULT_INPUT.deemedMonths, 0, 600)),
+    deemedIndex: num(input.deemedIndex, DEFAULT_INPUT.deemedIndex, 0.1, 5),
+
+    // 用户显式填了基数就用他的；否则跟随省份默认表。
+    baseAmount: hasExplicitBase ? Number(input.baseAmount) : defaultBaseFor(province.code),
+    baseYear: hasExplicitBaseYear
+      ? Math.round(num(input.baseYear, defaultBaseYearFor(province.code), 2000, 2060))
+      : defaultBaseYearFor(province.code),
+    baseGrowthRate: num(input.baseGrowthRate, DEFAULT_INPUT.baseGrowthRate, -0.05, 0.15),
+    accountInterestRate: num(input.accountInterestRate, DEFAULT_INPUT.accountInterestRate, 0, 0.15),
+    transitionRate: num(input.transitionRate, DEFAULT_INPUT.transitionRate, 0, 0.05),
+    // 显式给了就用给的，没给就跟随省份默认（广东等省对指数低于 0.6 的情形折减）。
+    indexFloorFactor: input.indexFloorFactor === undefined
+      ? province.code === 'guangdong'
+      : input.indexFloorFactor === true,
+
+    earlyMonths: Math.round(num(input.earlyMonths, 0, 0, 120)),
+    delayMonths: Math.round(num(input.delayMonths, 0, 0, 120)),
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 7. 个人账户累积预测
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 计发基数随年份增长后的值。
+ * @param {typeof DEFAULT_INPUT} input 完整输入。
+ * @param {number} year 目标年份。
+ * @returns {number} 该年的计发基数（元/月）。
+ */
+function baseAmountAt(input, year) {
+  const steps = year - input.baseYear
+  if (steps === 0) return input.baseAmount
+  return input.baseAmount * (1 + input.baseGrowthRate) ** steps
+}
+
+/**
+ * 逐月推演个人账户储存额到退休当月。
+ *
+ * 两件事同时发生：账户余额按月复利计息（记账利率折算成月利率），缴费月里
+ * 按当月社平工资 × 缴费指数 × 8% 记入本金。注意「计划缴费月数」与「距退休
+ * 月数」是两回事 —— 中断缴费的人退休前仍在计息，只是不再进本金。
+ *
+ * @param {typeof DEFAULT_INPUT} input 完整输入。
+ * @param {{year: number, month: number}} retireYearMonth 退休年月。
+ * @param {{year: number, month: number}} asOfYearMonth 估值基准年月。
+ * @returns {{balance: number, interestEarned: number, contributed: number, months: number, monthsPaid: number}}
+ *   退休时的账户余额与拆分。
+ */
+function projectAccount(input, retireYearMonth, asOfYearMonth) {
+  const monthlyRate = (1 + input.accountInterestRate) ** (1 / 12) - 1
+  const horizon = Math.max(0, monthsBetween(asOfYearMonth, retireYearMonth))
+  const monthsPaid = Math.min(input.futureMonths, horizon)
+
+  const opening = input.accountBalance
+  let balance = opening
+  let contributed = 0
+
+  for (let step = 0; step < horizon; step += 1) {
+    const cursor = yearMonthOf(monthIndexOf(asOfYearMonth) + step)
+    balance *= 1 + monthlyRate
+    if (step < monthsPaid) {
+      const socialAverage = baseAmountAt(input, cursor.year)
+      const deposit = socialAverage * input.futureIndex * 0.08
+      balance += deposit
+      contributed += deposit
+    }
+  }
+
+  return {
+    balance,
+    contributed,
+    interestEarned: balance - opening - contributed,
+    months: horizon,
+    monthsPaid,
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 8. 主计算
+ * ──────────────────────────────────────────────────────────────── */
+
+/** 一天有多少毫秒。 */
+const DAY_MS = 86_400_000
+
+/**
+ * 退休生效日。
+ *
+ * 政策上「达到法定退休年龄」是生日当天，退休手续在生日当月办理、次月起发放。
+ * 这里取「退休年月的出生日」作为达到退休条件的时点，用它算倒计时最贴近直觉。
+ * @param {{year: number, month: number}} retireYearMonth 退休年月。
+ * @param {number} day 出生日。
+ * @returns {Date} 退休日（本地时区）。
+ */
+function retirementDate(retireYearMonth, day = 1) {
+  return new Date(retireYearMonth.year, retireYearMonth.month - 1, day)
+}
+
+/**
+ * 完整测算。
+ *
+ * @param {Partial<typeof DEFAULT_INPUT>} rawInput 外部输入。
+ * @param {Date} [now] 计算基准时刻，默认取当前时间（测试时注入固定值）。
+ * @returns {object} 测算结果，含关键结论与逐步计算过程。
+ */
+function compute(rawInput = {}, now = new Date()) {
+  const input = normalizeInput(rawInput)
+  const birth = { year: input.birthYear, month: input.birthMonth }
+  const asOfYearMonth = { year: now.getFullYear(), month: now.getMonth() + 1 }
+
+  // —— 退休时点 ——
+  const legal = legalRetirement(birth, input.category)
+  const actual = applyFlexible(birth, input.category, {
+    earlyMonths: input.earlyMonths,
+    delayMonths: input.delayMonths,
+  })
+  // 输入粒度到月，倒计时统一按退休月的 1 日计，口径在文档里写明。
+  const retireAt = retirementDate(actual.yearMonth)
+  const daysUntilRetire = Math.ceil((retireAt.getTime() - now.getTime()) / DAY_MS)
+
+  // —— 缴费年限 ——
+  const totalPaidMonths = input.paidMonths + input.futureMonths + input.deemedMonths
+  const requiredMonths = minimumContributionMonths(actual.yearMonth)
+  const meetsMinimum = totalPaidMonths >= requiredMonths
+
+  // 综合平均缴费指数：实际缴费与视同缴费按各自月数加权。基础养老金用它。
+  const weightedMonths = input.paidMonths + input.futureMonths + input.deemedMonths
+  const weightedSum = input.paidMonths * input.paidIndex
+    + input.futureMonths * input.futureIndex
+    + input.deemedMonths * input.deemedIndex
+  const averageIndex = weightedMonths > 0 ? weightedSum / weightedMonths : 0
+
+  // —— 计发基数：用退休上一年度的值 ——
+  const baseAtRetirement = baseAmountAt(input, actual.yearMonth.year - 1)
+
+  // —— 个人账户 ——
+  const account = projectAccount(input, actual.yearMonth, asOfYearMonth)
+  const divisor = annuityMonths(actual.age.years)
+
+  // —— 三项养老金 ——
+  // 基础养老金 = 计发基数 × (1 + 平均缴费指数) ÷ 2 × 缴费年限 × 1%
+  // 广东等地对平均指数低于 0.6 的情形额外折减：a = 指数 ÷ 0.6。
+  const floorFactor = input.indexFloorFactor && averageIndex < 0.6 ? averageIndex / 0.6 : 1
+  const effectiveBase = baseAtRetirement * floorFactor
+  const totalYears = totalPaidMonths / 12
+  const basicPension = (effectiveBase + effectiveBase * averageIndex) / 2 * totalYears * 0.01
+
+  const accountPension = account.balance / divisor
+
+  // 过渡性养老金 = 计发基数 × 视同缴费指数 × 系数 × 视同缴费年限
+  const deemedYears = input.deemedMonths / 12
+  const transitionalPension = input.deemedMonths > 0
+    ? baseAtRetirement * input.deemedIndex * input.transitionRate * deemedYears
+    : 0
+
+  const monthlyPension = basicPension + accountPension + transitionalPension
+  const replacementRate = baseAtRetirement > 0 ? monthlyPension / baseAtRetirement : 0
+
+  // 退休时当地社平口径的月工资，用指数还原，作为「退休前工资」的估算。
+  const preRetirementWage = baseAtRetirement * Math.max(averageIndex, 0.1)
+  const wageReplacement = preRetirementWage > 0 ? monthlyPension / preRetirementWage : 0
+
+  return {
+    input,
+    engineVersion: ENGINE_VERSION,
+    computedAt: now.toISOString(),
+    asOfText: formatYearMonth(asOfYearMonth),
+
+    // 退休时点
+    legal,
+    actual,
+    retirementYearMonth: actual.yearMonth,
+    retirementDate: retireAt,
+    daysUntilRetire,
+    yearsUntilRetire: daysUntilRetire / 365.2425,
+    retirementAgeText: formatAge(actual.age),
+    legalRetirementText: `${formatYearMonth(legal.yearMonth)}（${formatAge(legal.age)}）`,
+    delayMonths: legal.delayMonths,
+
+    // 缴费
+    totalPaidMonths,
+    totalPaidYears: totalYears,
+    requiredMonths,
+    meetsMinimum,
+
+    // 待遇
+    averageIndex,
+    annuityMonths: divisor,
+    baseAtRetirement,
+    projectedAccountBalance: account.balance,
+    basicPension,
+    accountPension,
+    transitionalPension,
+    monthlyPension,
+    annualPension: monthlyPension * 12,
+    replacementRate,
+    preRetirementWage,
+    wageReplacement,
+    accountProjection: account,
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 9. 输出格式化
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * 把金额格式化成带千分位的人民币。
+ * @param {number} value 金额。
+ * @returns {string} 例如 `4,864.36`。
+ */
+function formatMoney(value) {
+  if (!Number.isFinite(value)) return '—'
+  return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** 把比例格式化成百分比。 */
+function formatPercent(value, digits = 1) {
+  if (!Number.isFinite(value)) return '—'
+  return `${(value * 100).toFixed(digits)}%`
+}
+
+/** 把天数格式化成带千分位的整数。 */
+function formatDays(days) {
+  if (!Number.isFinite(days)) return '—'
+  return Math.max(0, days).toLocaleString('zh-CN')
+}
+
+/**
+ * 生成一段纯文本测算报告。
+ *
+ * DSH 工具结果、skill 回复、网页「复制结果」共用一个渲染器，保证三处口径一致。
+ * @param {ReturnType<typeof compute>} result 测算结果。
+ * @returns {string} 多行文本。
+ */
+function formatReport(result) {
+  const { input, actual, legal } = result
+  const lines = []
+  lines.push(`【退休测算】${input.birthYear}年${input.birthMonth}月生 · ${CATEGORIES[input.category].label}`)
+  lines.push('')
+  lines.push(`距退休：${formatDays(result.daysUntilRetire)} 天（约 ${result.yearsUntilRetire.toFixed(1)} 年）`)
+  lines.push(`退休时间：${formatYearMonth(actual.yearMonth)}，${result.retirementAgeText}`)
+  lines.push(`法定退休：${result.legalRetirementText}${legal.delayMonths > 0 ? `（延迟 ${legal.delayMonths} 个月）` : ''}`)
+  if (actual.mode !== 'legal') {
+    lines.push(`弹性选择：${actual.mode === 'early' ? '提前' : '延后'} ${Math.abs(actual.appliedMonths)} 个月${actual.reason ? ` · ${actual.reason}` : ''}`)
+  }
+  lines.push('')
+  lines.push(`预计月养老金：￥${formatMoney(result.monthlyPension)}`)
+  lines.push(`  · 基础养老金　　￥${formatMoney(result.basicPension)}`)
+  lines.push(`  · 个人账户养老金 ￥${formatMoney(result.accountPension)}`)
+  if (result.transitionalPension > 0) {
+    lines.push(`  · 过渡性养老金　￥${formatMoney(result.transitionalPension)}`)
+  }
+  lines.push('')
+  lines.push(`缴费年限：${formatMonths(result.totalPaidMonths)}（最低要求 ${formatMonths(result.requiredMonths)}，${result.meetsMinimum ? '已满足' : '未满足'}`)
+  lines.push(`平均缴费指数：${result.averageIndex.toFixed(4)}`)
+  lines.push(`计发基数（${actual.yearMonth.year - 1} 年）：￥${formatMoney(result.baseAtRetirement)}/月`)
+  lines.push(`个人账户退休时余额：￥${formatMoney(result.projectedAccountBalance)}（计发月数 ${result.annuityMonths}）`)
+  lines.push(`养老金替代率：${formatPercent(result.replacementRate)}（对计发基数）`)
+  return lines.join('\n')
+}
+
+
+</script>
+<script>
+
+/* ── web/app.js（构建期内联） ── */
+/**
+ * 实时计算器的前端逻辑。
+ *
+ * 本文件在构建时被内联进单文件 HTML，运行环境里 core.js 的所有导出已经挂在
+ * 全局作用域上（构建脚本会剥掉 `export` 关键字），所以这里直接调用 compute、
+ * formatMoney 等函数，无需 import。
+ *
+ * 数据流是单向的：DOM 表单 → `readForm()` → `compute()` → 各个 render 函数
+ * 把结果写回 DOM。没有双向绑定，任何输入事件都走同一条链路，所以「实时」是
+ * 免费的 —— 只要重算一次。
+ */
+
+/* eslint-env browser */
+/* global compute, formatMoney, formatPercent, formatDays,
+   formatMonths, formatYearMonth, formatAge, CATEGORIES, PROVINCES,
+   findProvince, defaultBaseFor, defaultBaseYearFor, formatReport */
+
+const $ = id => document.getElementById(id)
+
+/** 首次打开时选中的省份；同时也是计发基数初值的来源。 */
+const INITIAL_PROVINCE = 'guangdong'
+
+/** 首次打开时预填的一组数据，让页面一进来就有可看的数字。 */
+const INITIAL = {
+  birthYear: 1990,
+  birthMonth: 1,
+  category: 'male',
+  province: INITIAL_PROVINCE,
+  insuredType: 'employee',
+  paidMonths: 8 * 12,
+  paidIndex: 0.6,
+  futureMonths: 30 * 12,
+  futureIndex: 0.6,
+  accountBalance: 60_000,
+  deemedMonths: 0,
+  deemedIndex: 0.6,
+  // 计发基数初值取自省份默认表 —— 必须和 normalizeInput 用同一套回落逻辑，
+  // 否则会出现「输入框空白、结果却按某个基数算出来」的口径分裂。
+  baseAmount: defaultBaseFor(INITIAL_PROVINCE),
+  baseYear: defaultBaseYearFor(INITIAL_PROVINCE),
+  baseGrowthRate: 0.02,
+  accountInterestRate: 0.015,
+  transitionRate: 0.013,
+  earlyMonths: 0,
+  delayMonths: 0,
+}
+
+/** 当前表单状态（与 DOM 同步的一份扁平快照）。 */
+let state = { ...INITIAL }
+/** 上一次渲染的结果，供复制功能使用。 */
+let lastResult = null
+
+/* ── 表单骨架：下拉与分段控件 ─────────────────────────────── */
+
+function buildStaticControls() {
+  const monthSelect = $('birthMonth')
+  monthSelect.innerHTML = Array.from({ length: 12 }, (_, i) =>
+    `<option value="${i + 1}">${i + 1} 月</option>`).join('')
+
+  $('categorySeg').innerHTML = Object.values(CATEGORIES).map(spec => `
+    <label>
+      <input type="radio" name="category" value="${spec.key}">
+      <span>${spec.shortLabel}</span>
+    </label>`).join('')
+
+  $('insuredSeg').innerHTML = [
+    { value: 'employee', label: '职工' },
+    { value: 'flexible', label: '灵活就业' },
+  ].map(item => `
+    <label>
+      <input type="radio" name="insuredType" value="${item.value}">
+      <span>${item.label}</span>
+    </label>`).join('')
+
+  $('province').innerHTML = PROVINCES
+    .map(province => `<option value="${province.code}">${province.name}</option>`)
+    .join('')
+}
+
+/* ── 表单读取与回写 ──────────────────────────────────────── */
+
+/** 把 `state` 写进 DOM。 */
+function writeForm() {
+  $('birthYear').value = state.birthYear
+  $('birthMonth').value = state.birthMonth
+  document.querySelector(`input[name="category"][value="${state.category}"]`).checked = true
+  document.querySelector(`input[name="insuredType"][value="${state.insuredType}"]`).checked = true
+
+  $('paidYears').value = Math.floor(state.paidMonths / 12)
+  $('paidMonthsExtra').value = state.paidMonths % 12
+  $('paidIndex').value = state.paidIndex
+
+  $('futureYears').value = Math.floor(state.futureMonths / 12)
+  $('futureMonthsExtra').value = state.futureMonths % 12
+  $('futureIndex').value = state.futureIndex
+
+  $('accountBalance').value = state.accountBalance
+  $('province').value = state.province
+  $('baseAmount').value = Math.round(state.baseAmount)
+
+  $('deemedYears').value = Math.floor(state.deemedMonths / 12)
+  $('deemedMonthsExtra').value = state.deemedMonths % 12
+  $('deemedIndex').value = state.deemedIndex
+
+  $('baseGrowthRate').value = +(state.baseGrowthRate * 100).toFixed(2)
+  $('accountInterestRate').value = +(state.accountInterestRate * 100).toFixed(2)
+  $('transitionRate').value = +(state.transitionRate * 100).toFixed(1)
+
+  $('earlyMonths').value = state.earlyMonths
+  $('delayMonths').value = state.delayMonths
+}
+
+/** 从 DOM 收回一份状态。 */
+function readForm() {
+  const int = (id, fallback) => {
+    const value = Number.parseInt($(id).value, 10)
+    return Number.isFinite(value) ? value : fallback
+  }
+
+  state = {
+    ...state,
+    birthYear: int('birthYear', state.birthYear),
+    birthMonth: int('birthMonth', state.birthMonth),
+    category: document.querySelector('input[name="category"]:checked').value,
+    insuredType: document.querySelector('input[name="insuredType"]:checked').value,
+
+    paidMonths: Math.max(0, int('paidYears', 0)) * 12 + Math.max(0, int('paidMonthsExtra', 0)),
+    paidIndex: Number($('paidIndex').value),
+
+    futureMonths: Math.max(0, int('futureYears', 0)) * 12 + Math.max(0, int('futureMonthsExtra', 0)),
+    futureIndex: Number($('futureIndex').value),
+
+    accountBalance: Math.max(0, Number($('accountBalance').value) || 0),
+    province: $('province').value,
+    // 基数被清空时回落到该省默认值，而不是让 0 悄悄流进计算。
+    baseAmount: Math.max(0, Number($('baseAmount').value) || 0) || defaultBaseFor($('province').value),
+
+    deemedMonths: Math.max(0, int('deemedYears', 0)) * 12 + Math.max(0, int('deemedMonthsExtra', 0)),
+    deemedIndex: Number($('deemedIndex').value),
+
+    baseGrowthRate: (Number($('baseGrowthRate').value) || 0) / 100,
+    accountInterestRate: (Number($('accountInterestRate').value) || 0) / 100,
+    transitionRate: (Number($('transitionRate').value) || 0) / 100,
+
+    earlyMonths: Number($('earlyMonths').value),
+    delayMonths: Number($('delayMonths').value),
+  }
+  return state
+}
+
+/* ── 渲染 ───────────────────────────────────────────────── */
+
+/**
+ * 大数字的滚动过渡。上一次未播完的动画会被打断，从当前位置重新起算。
+ *
+ * 动画用 `setInterval` 而不是 `requestAnimationFrame`：标签页切到后台时浏览器
+ * 停发渲染帧，rAF 回调会被一直挂起，数字就永久停在旧值上 —— 用户切回来看到的是
+ * 过期结果。定时器即使被节流也一定会跑到最后一步，届时强制写入终值，
+ * 所以「显示的数」与「算出的数」在任何情况下都不会脱节。
+ *
+ * 真实值同时写在 `dataset.raw` 上，与播放中的过渡值区分开。
+ */
+const tweens = new Map()
+function tweenNumber(el, to, formatter) {
+  const from = Number(el.dataset.raw ?? to)
+  el.dataset.raw = String(to)
+  const previous = tweens.get(el)
+  if (previous !== undefined) clearInterval(previous)
+  tweens.delete(el)
+
+  if (!Number.isFinite(from) || Math.abs(to - from) < 0.005) {
+    el.textContent = formatter(to)
+    return
+  }
+
+  const start = performance.now()
+  const duration = 200
+  const settle = () => {
+    clearInterval(timer)
+    tweens.delete(el)
+    el.textContent = formatter(Number(el.dataset.raw))
+  }
+  const timer = setInterval(() => {
+    const t = Math.min(1, (performance.now() - start) / duration)
+    if (t >= 1) {
+      settle()
+      return
+    }
+    const eased = 1 - (1 - t) ** 3
+    el.textContent = formatter(from + (to - from) * eased)
+  }, 16)
+  tweens.set(el, timer)
+}
+
+function renderHero(result) {
+  const days = result.daysUntilRetire
+  tweenNumber($('daysValue'), Math.max(0, days), value => formatDays(Math.round(value)))
+
+  if (days > 0) {
+    const years = days / 365.2425
+    $('daysNote').textContent = `约 ${years.toFixed(1)} 年 · ${formatMonths(Math.round(days / 30.44))}`
+    $('daysDate').textContent = `${formatYearMonth(result.retirementYearMonth)} 达到条件，退休年龄 ${result.retirementAgeText}`
+  } else {
+    $('daysNote').textContent = '已达到法定退休条件'
+    $('daysDate').textContent = `${formatYearMonth(result.retirementYearMonth)} · ${result.retirementAgeText}`
+  }
+
+  tweenNumber($('pensionValue'), result.monthlyPension, value => formatMoney(value))
+  $('pensionNote').textContent = `每年约 ￥${formatMoney(result.annualPension)}`
+  $('pensionSub').textContent = `相当于退休前工资的 ${formatPercent(result.wageReplacement, 1)}`
+    + `（退休前月工资约 ￥${formatMoney(result.preRetirementWage)}）`
+}
+
+function renderMetrics(result) {
+  const province = findProvince(result.input.province)
+  const meets = result.meetsMinimum
+  const metrics = [
+    {
+      label: '退休年月',
+      value: formatYearMonth(result.retirementYearMonth),
+      note: result.legal.delayMonths > 0 ? `延迟 ${result.legal.delayMonths} 个月` : '不受延迟影响',
+    },
+    {
+      label: '退休年龄',
+      value: result.retirementAgeText,
+      note: `法定 ${formatAge(result.legal.age)}`,
+    },
+    {
+      label: '累计缴费年限',
+      value: formatMonths(result.totalPaidMonths),
+      note: `最低要求 ${formatMonths(result.requiredMonths)}`,
+      tone: meets ? 'pos' : 'neg',
+    },
+    {
+      label: '平均缴费指数',
+      value: result.averageIndex.toFixed(4),
+      note: `${formatPercent(result.averageIndex, 0)} 档`,
+    },
+    {
+      label: '退休时个人账户',
+      value: `￥${formatMoney(result.projectedAccountBalance)}`,
+      note: `含利息 ￥${formatMoney(result.accountProjection.interestEarned)}`,
+    },
+    {
+      label: '计发月数',
+      value: `${result.annuityMonths} 个月`,
+      note: `按 ${result.actual.age.years} 周岁取值`,
+    },
+    {
+      label: '计发基数',
+      value: `￥${formatMoney(result.baseAtRetirement)}`,
+      note: `${result.retirementYearMonth.year - 1} 年 · ${province ? province.name : ''}`,
+    },
+    {
+      label: '养老金替代率',
+      value: formatPercent(result.replacementRate, 1),
+      note: '对当地计发基数',
+    },
+  ]
+
+  $('metricGrid').innerHTML = metrics.map(metric => `
+    <div class="metric">
+      <dt>${metric.label}</dt>
+      <dd class="${metric.tone ?? ''}">${metric.value}</dd>
+      <dt style="margin:4px 0 0">${metric.note ?? ''}</dt>
+    </div>`).join('')
+}
+
+function renderCallout(result) {
+  const target = $('statusCallout')
+  if (!result.meetsMinimum) {
+    const shortfall = result.requiredMonths - result.totalPaidMonths
+    target.innerHTML = `<div class="callout warn"><b>缴费年限还差 ${formatMonths(shortfall)}。</b>
+      在 ${result.retirementYearMonth.year} 年退休，领取养老金的最低缴费年限为 ${formatMonths(result.requiredMonths)}，
+      当前测算的累计缴费年限只有 ${formatMonths(result.totalPaidMonths)}。
+      需要继续缴费或补缴，否则无法按月领取基本养老金。</div>`
+    return
+  }
+  const spec = CATEGORIES[result.input.category]
+  target.innerHTML = `<div class="callout ok"><b>已满足最低缴费年限。</b>
+    ${spec.label}的法定退休年龄为 ${spec.originalAge} 周岁，
+    ${result.legal.delayMonths > 0
+      ? `本次改革下延迟 ${result.legal.delayMonths} 个月，实际按 ${formatAge(result.legal.age)} 执行。`
+      : '本次改革不影响其退休时点。'}
+    ${result.actual.mode === 'early' ? `已选择弹性提前 ${Math.abs(result.actual.appliedMonths)} 个月。` : ''}
+    ${result.actual.mode === 'delay' ? `已选择弹性延后 ${result.actual.appliedMonths} 个月。` : ''}
+    ${result.actual.reason ? `（${result.actual.reason}）` : ''}</div>`
+}
+
+function renderBreakdown(result) {
+  const input = result.input
+  const base = result.baseAtRetirement
+  const years = result.totalPaidYears
+  const lines = []
+
+  const rows = []
+  rows.push({
+    title: '基础养老金',
+    formula: `(${formatMoney(base)} × (1 + ${result.averageIndex.toFixed(4)})) ÷ 2 × ${years.toFixed(2)} 年 × 1%`,
+    amount: result.basicPension,
+    note: `计发基数 ${formatMoney(base)} 元/月，缴费年限 ${formatMonths(result.totalPaidMonths)}`,
+  })
+  rows.push({
+    title: '个人账户养老金',
+    formula: `${formatMoney(result.projectedAccountBalance)} ÷ ${result.annuityMonths}`,
+    amount: result.accountPension,
+    note: `账户里本金 ${formatMoney(input.accountBalance + result.accountProjection.contributed)} 元、记账利息 ${formatMoney(result.accountProjection.interestEarned)} 元`,
+  })
+  if (result.transitionalPension > 0) {
+    rows.push({
+      title: '过渡性养老金',
+      formula: `${formatMoney(base)} × ${input.deemedIndex.toFixed(4)} × ${formatPercent(input.transitionRate)} × ${(input.deemedMonths / 12).toFixed(2)} 年`,
+      amount: result.transitionalPension,
+      note: `视同缴费年限 ${formatMonths(input.deemedMonths)}`,
+    })
+  }
+
+  for (const row of rows) {
+    lines.push(`<div class="line">
+      <div class="desc"><b>${row.title}</b><code>${row.formula}</code>
+      <code style="color:#98a2b3">${row.note}</code></div>
+      <div class="amt">￥${formatMoney(row.amount)}</div>
+    </div>`)
+  }
+
+  lines.push(`<div class="line total">
+    <div class="desc"><b>合计每月</b><code>基本养老金 = 基础养老金 + 个人账户养老金${result.transitionalPension > 0 ? ' + 过渡性养老金' : ''}</code></div>
+    <div class="amt">￥${formatMoney(result.monthlyPension)}</div>
+  </div>`)
+
+  lines.push(`<div class="line" style="border-top:1px dashed #e4e7ec;margin-top:10px;padding-top:10px">
+    <div class="desc"><b>个人账户推演</b>
+      <code>当前 ${formatMoney(input.accountBalance)} ＋ 未来缴费 ${formatMoney(result.accountProjection.contributed)} ＋ 记账利息 ${formatMoney(result.accountProjection.interestEarned)} ＝ 退休时 ${formatMoney(result.projectedAccountBalance)}</code>
+      <code style="color:#98a2b3">未来 ${result.accountProjection.monthsPaid} 个月实际缴费，其余 ${result.accountProjection.months - result.accountProjection.monthsPaid} 个月只计息</code>
+    </div>
+    <div class="amt" style="font-size:14px">￥${formatMoney(input.accountBalance)} → ￥${formatMoney(result.projectedAccountBalance)}</div>
+  </div>`)
+
+  $('breakdown').innerHTML = lines.join('')
+}
+
+/**
+ * 三个「提高待遇」情景，每个只改一个变量。
+ *
+ * 已缴的部分改不了，所以「提高缴费档次」被解读为「假设从头到尾都按更高档缴」，
+ * 这在文案里写清楚，避免被误读成可以追溯修改历史缴费。
+ */
+function renderSensitivity(result) {
+  const now = new Date(result.computedAt)
+  const baseInput = result.input
+  const rows = []
+
+  const scenario = (label, patch, note) => {
+    const variant = compute({ ...baseInput, ...patch }, now)
+    rows.push({ label, note, pension: variant.monthlyPension, days: variant.daysUntilRetire })
+  }
+
+  rows.push({
+    label: '当前方案', note: '', pension: result.monthlyPension,
+    days: result.daysUntilRetire, isBase: true,
+  })
+
+  scenario('继续多缴 5 年', { futureMonths: baseInput.futureMonths + 60 },
+    `缴费年限 ${formatMonths(baseInput.paidMonths + baseInput.futureMonths)} → ${formatMonths(baseInput.paidMonths + baseInput.futureMonths + 60)}`)
+
+  scenario('全程缴费档次提高 0.2',
+    {
+      paidIndex: Math.min(3, baseInput.paidIndex + 0.2),
+      futureIndex: Math.min(3, baseInput.futureIndex + 0.2),
+      deemedIndex: Math.min(3, baseInput.deemedIndex + 0.2),
+    },
+    `平均指数 ${baseInput.paidIndex.toFixed(2)} → ${Math.min(3, baseInput.paidIndex + 0.2).toFixed(2)}`)
+
+  scenario('弹性延后 3 年退休', { earlyMonths: 0, delayMonths: 36 },
+    '多缴 3 年、计发月数变小')
+
+  const basePension = result.monthlyPension
+  $('sensTable').innerHTML = `
+    <thead><tr><th>情景</th><th>预计月养老金</th><th>距退休</th></tr></thead>
+    <tbody>${rows.map(row => {
+      const diff = row.pension - basePension
+      const delta = row.isBase || Math.abs(diff) < 0.01
+        ? ''
+        : `<span class="delta ${diff > 0 ? 'up' : 'down'}">${diff > 0 ? '+' : '−'}￥${formatMoney(Math.abs(diff))}</span>`
+      const pct = row.isBase || Math.abs(basePension) < 0.01
+        ? ''
+        : `<div style="font-size:11.5px;color:#98a2b3">${diff >= 0 ? '+' : '−'}${Math.abs(diff / basePension * 100).toFixed(1)}%</div>`
+      return `<tr class="${row.isBase ? 'base' : ''}">
+        <td>${row.label}${row.note ? `<div style="font-size:11.5px;color:#98a2b3">${row.note}</div>` : ''}</td>
+        <td>￥${formatMoney(row.pension)}${delta}${pct}</td>
+        <td>${row.isBase ? '—' : (row.days > 0 ? `${formatDays(row.days)} 天` : '已到龄')}</td>
+      </tr>`
+    }).join('')}</tbody>`
+}
+
+function renderAll(result) {
+  lastResult = result
+  renderHero(result)
+  renderMetrics(result)
+  renderCallout(result)
+  renderBreakdown(result)
+  renderSensitivity(result)
+  $('asOf').textContent = `${result.asOfText}`
+}
+
+/* ── 事件接线 ───────────────────────────────────────────── */
+
+/** 重算 + 重绘。任何输入事件都走这里。 */
+function refresh() {
+  readForm()
+  updateDerivedLabels()
+  renderAll(compute(state, new Date()))
+}
+
+/** 与结果无关、只反映输入本身的实时标签。 */
+function updateDerivedLabels() {
+  $('paidIndexVal').textContent = `${state.paidIndex.toFixed(2)}（${formatPercent(state.paidIndex, 0)} 档）`
+  $('futureIndexVal').textContent = `${state.futureIndex.toFixed(2)}（${formatPercent(state.futureIndex, 0)} 档）`
+  $('deemedIndexVal').textContent = `${state.deemedIndex.toFixed(2)}（${formatPercent(state.deemedIndex, 0)} 档）`
+  $('earlyVal').textContent = state.earlyMonths === 0 ? '不提前' : `${state.earlyMonths} 个月`
+  $('delayVal').textContent = state.delayMonths === 0 ? '不延后' : `${state.delayMonths} 个月`
+
+  $('categoryHint').textContent = CATEGORIES[state.category].description
+
+  const province = findProvince(state.province)
+  if (province) {
+    const statusText = province.status === 'published'
+      ? `${province.year} 年官方公布值`
+      : province.status === 'reference'
+        ? `${province.year} 年值（新一年度未公布）`
+        : '未收录'
+    $('provinceHint').textContent = province.note
+      ? `${statusText}：${formatMoney(province.base)} 元/月 · ${province.note}`
+      : `${statusText}：${formatMoney(province.base)} 元/月`
+    $('provinceHint').className = province.status === 'manual' ? 'hint warn' : 'hint'
+  }
+
+  $('baseHint').textContent = `当前按 ${state.baseYear} 年的 ${formatMoney(state.baseAmount)} 元/月推算，`
+    + `以每年 ${(state.baseGrowthRate * 100).toFixed(1)}% 递增到退休时。`
+}
+
+/**
+ * 合并同一批输入触发的重算，避免拖动滑块时重复渲染并打断数字动画。
+ *
+ * 这里用 `setTimeout(…, 0)` 而不是 `requestAnimationFrame`：无头环境（或页面被
+ * 隐藏时）没有渲染帧，rAF 回调会被无限推迟，交互就会静默失效。定时器在所有
+ * 环境下都会触发，代价只是可能多算一次 —— 而一次计算是微秒级的。
+ */
+let refreshQueued = false
+function scheduleRefresh() {
+  if (refreshQueued) return
+  refreshQueued = true
+  setTimeout(() => {
+    refreshQueued = false
+    refresh()
+  }, 0)
+}
+
+function wireEvents() {
+  // `input` 事件对 number / range / radio / select 都会触发，绑一个就够。
+  $('form').addEventListener('input', event => {
+    // 切换退休地时，把计发基数带到该省的默认值。
+    if (event.target.id === 'province') {
+      const code = $('province').value
+      state.baseAmount = defaultBaseFor(code)
+      state.baseYear = defaultBaseYearFor(code)
+      $('baseAmount').value = Math.round(state.baseAmount)
+    }
+    scheduleRefresh()
+  })
+
+  $('resetBtn').addEventListener('click', () => {
+    state = { ...INITIAL }
+    writeForm()
+    refresh()
+    toast('已恢复默认参数')
+  })
+
+  $('copyBtn').addEventListener('click', async () => {
+    if (!lastResult) return
+    const text = formatReport(lastResult)
+      + `\n\n（测算口径：渐进式延迟退休改革 + 国发〔2005〕38 号计发月数表。`
+      + `计发基数等参数为假设值，实际待遇以社保经办机构核定为准。）`
+    try {
+      await navigator.clipboard.writeText(text)
+      toast('已复制到剪贴板')
+    } catch {
+      toast('复制失败，请手动选择文本')
+    }
+  })
+
+  $('printBtn').addEventListener('click', () => window.print())
+}
+
+let toastTimer
+function toast(message) {
+  const el = $('toast')
+  el.textContent = message
+  el.classList.add('show')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800)
+}
+
+/* ── 启动 ───────────────────────────────────────────────── */
+
+buildStaticControls()
+state = { ...INITIAL }
+writeForm()
+wireEvents()
+refresh()
+
+// 页面跨过零点时，「距退休天数」应该少一天。每分钟对一次，成本可以忽略。
+setInterval(() => {
+  const before = lastResult ? lastResult.asOfText : ''
+  const result = compute(state, new Date())
+  if (result.asOfText !== before) renderAll(result)
+}, 60_000)
+
+
+</script>
+</body>
+</html>
