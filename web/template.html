@@ -311,9 +311,41 @@
       </div>
 
       <div class="field">
+        <label>未来的缴费怎么算</label>
+        <div class="seg" id="futureModeSeg"></div>
+        <div class="hint" id="futureModeHint"></div>
+      </div>
+
+      <div class="field" id="futureIndexField">
         <label>未来缴费的缴费指数</label>
         <div class="slider-head"><span class="hint" style="margin:0">按 60% 档缴则填 0.6</span><b id="futureIndexVal"></b></div>
         <input type="range" id="futureIndex" min="0.6" max="3" step="0.01">
+      </div>
+
+      <div id="futureAmountFields" hidden>
+        <div class="field">
+          <label>当前月缴费基数</label>
+          <div class="row">
+            <input type="number" id="monthlyBase" min="0" step="100">
+            <span class="unit">元</span>
+          </div>
+          <div class="hint" id="monthlyBaseHint"></div>
+        </div>
+
+        <div class="field">
+          <label>未来月缴费基数</label>
+          <div class="row">
+            <input type="number" id="futureMonthlyBase" min="0" step="100">
+            <span class="unit">元</span>
+          </div>
+          <div class="hint">留 0 表示沿用上面的数字。以后打算调低基数就填在这里。</div>
+        </div>
+
+        <div class="field">
+          <label>未来的基数怎么走</label>
+          <div class="seg" id="followSeg"></div>
+          <div class="hint" id="followHint"></div>
+        </div>
       </div>
 
       <div class="field">

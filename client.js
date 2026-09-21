@@ -75,7 +75,7 @@ window.__ModuleLoader__.load({
 .dsh-rc-hero-warm .dsh-rc-hero-v { color: var(--dsw-alias-state-warn-primary, #c77700); }
 /* 大数字用**业务主色** —— 它才是这套设计系统里真正的品牌蓝
    （deepseek-400 #679efe / deepseek-500 #4176e6，明暗主题各取一个，对比度都在 5:1 上下）。
-   这里特意不用 `brand-primary`：那个名字听起来更像品牌色，实际是**中性**强调色，
+   这里特意不用 brand-primary：那个名字听起来更像品牌色，实际是**中性**强调色，
    深色主题下取 bluish-50（近白），数字会丢掉色彩层次、跟旁边的白字糊在一起。 */
 .dsh-rc-hero-brand .dsh-rc-hero-v { color: var(--dsw-alias-state-business-primary, LinkText); }
 .dsh-rc-hero-n { margin-top: 3px; color: var(--dsw-alias-label-tertiary, GrayText); font-size: 11px; }
@@ -493,11 +493,58 @@ window.__ModuleLoader__.load({
                     totalMonths: profile.futureMonths,
                     onChange: value => change({ futureMonths: value }),
                   }),
-                  h(Slider, {
-                    label: '未来缴费指数',
-                    value: profile.futureIndex,
-                    onChange: value => change({ futureIndex: value }),
-                  }),
+                  // 未来缴费的两种填法。这里不用额外的「模式」字段：`monthlyBase > 0`
+                  // 本身就是金额模式的标志，档案里少一个只为 UI 存在的键。
+                  h('div', { className: 'dsh-rc-fl' },
+                    h('span', null, '未来的缴费怎么算'),
+                    h('div', { className: 'dsh-rc-seg' },
+                      [['index', '按缴费指数'], ['amount', '按缴费基数']].map(([mode, label]) => h('button', {
+                        key: mode,
+                        type: 'button',
+                        className: (profile.monthlyBase > 0) === (mode === 'amount') ? 'dsh-rc-on' : '',
+                        onClick: () => change(mode === 'amount'
+                          // 切到金额模式时补一个「等于当前档位」的起点，让切换前后结果连续
+                          ? {
+                            monthlyBase: profile.monthlyBase > 0
+                              ? profile.monthlyBase
+                              : Math.round(profile.baseAmount * profile.paidIndex),
+                          }
+                          : { monthlyBase: 0, futureMonthlyBase: 0 }),
+                      }, label)),
+                    ),
+                  ),
+                  profile.monthlyBase > 0
+                    ? h(React.Fragment, null,
+                      h(NumberField, {
+                        label: '当前月缴费基数',
+                        value: profile.monthlyBase, step: 100, min: 0, suffix: '元',
+                        onChange: value => change({ monthlyBase: value }),
+                      }),
+                      h(NumberField, {
+                        label: '未来月缴费基数（0 = 沿用上面）',
+                        value: profile.futureMonthlyBase, step: 100, min: 0, suffix: '元',
+                        onChange: value => change({ futureMonthlyBase: value }),
+                      }),
+                      h('div', { className: 'dsh-rc-fl' },
+                        h('span', null, '未来的基数怎么走'),
+                        h('div', { className: 'dsh-rc-seg' },
+                          [['follow', '随社平上调'], ['fixed', '固定不变']].map(([mode, label]) => h('button', {
+                            key: mode,
+                            type: 'button',
+                            className: profile.baseFollowsAverage === (mode === 'follow') ? 'dsh-rc-on' : '',
+                            onClick: () => change({ baseFollowsAverage: mode === 'follow' }),
+                          }, label)),
+                        ),
+                        h('p', { className: 'dsh-rc-note' }, profile.baseFollowsAverage
+                          ? '基数随社平同比例上调，缴费指数保持不变。'
+                          : '基数固定、社平继续涨，缴费指数会逐年下滑，把平均指数拉低。'),
+                      ),
+                    )
+                    : h(Slider, {
+                      label: '未来缴费指数',
+                      value: profile.futureIndex,
+                      onChange: value => change({ futureIndex: value }),
+                    }),
                   h(NumberField, {
                     label: '当前个人账户累计储存额',
                     value: profile.accountBalance, step: 1000, min: 0, suffix: '元',

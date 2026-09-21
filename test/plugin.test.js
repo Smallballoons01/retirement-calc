@@ -159,7 +159,12 @@ if (pluginModule === undefined) {
     assert.equal(value.retirement_age, '63岁')
     assert.equal(value.legal_delay_months, 36)
     assert.equal(value.annuity_months, 117)
-    assert.equal(value.total_paid_months, 38 * 12)
+    // 默认档案说「再缴 30 年」，但 1990 年生的人 2053 年就退休了，实际只有 27 年上下。
+    // 缴费年限按实际可缴月数计，不再拿计划月数充数。
+    assert.equal(value.total_paid_months, 8 * 12 + value.future_paid_months)
+    assert.ok(value.future_paid_months < 30 * 12,
+      `实际计入 ${value.future_paid_months} 个月，不应等于计划的 360 个月`)
+    assert.ok(value.future_paid_months > 26 * 12, '到退休还有 27 年上下，不该少得离谱')
     assert.equal(value.required_months, 240)
     assert.equal(value.meets_minimum, true)
     assert.ok(value.days_until_retirement > 0)

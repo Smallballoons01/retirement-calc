@@ -136,6 +136,16 @@ export const CATEGORIES = {
 const REFORM_ANCHOR = { year: 2025, month: 1 }
 
 /**
+ * 缴费基数上下限对应的缴费指数范围。
+ *
+ * 国家统一规则：职工缴费基数不得低于全省全口径社平的 60%，不得高于 300%，
+ * 因此任何一年的缴费指数都必然落在 [0.6, 3.0] 之内。金额模式下要用它夹一下 ——
+ * 填一个低于下限的基数，算出来的 0.4 之类的档位在多数省份根本不让你缴。
+ */
+export const MIN_INDEX = 0.6
+export const MAX_INDEX = 3
+
+/**
  * 算某人的法定退休时点（不含弹性提前/延后）。
  *
  * 定位方式：先按原法定年龄算出「原本该退休的年月」，再看它与 2025-01 的距离。
@@ -391,7 +401,21 @@ export const DEFAULT_INPUT = Object.freeze({
   paidMonths: 0,               // 已缴月数（累计，含视同缴费前的实际缴费）
   paidIndex: 0.6,              // 已缴部分的平均缴费指数（0.6 = 60% 档）
   futureMonths: 0,             // 计划继续缴费的月数
-  futureIndex: 0.6,            // 未来缴费指数
+  futureIndex: 0.6,            // 未来缴费指数（指数模式下使用）
+
+  // —— 缴费基数（金额模式）——
+  //
+  // 上面那对 index 字段适合「我一直按 60% 档缴」这种说法，但表达不了更常见的情形：
+  // 基数是一个**确定金额**（比如 10000 元/月），而社平逐年上涨 —— 此时缴费指数
+  // 逐年**下降**，养老金被拉低，用固定指数去算会偏高。
+  //
+  // 所以允许直接填金额。`monthlyBase > 0` 即切换到金额模式，指数由基数与当年社平
+  // 现算：指数 = 缴费基数 ÷ 当年社平。个人账户也按真实基数 × 8% 记账。
+  monthlyBase: 0,              // 当前月缴费基数（元）；0 = 用 futureIndex 的指数模式
+  futureMonthlyBase: 0,        // 未来的月缴费基数（元）；0 = 沿用 monthlyBase
+  baseFollowsAverage: true,    // 未来基数是否随社平同步上调
+                               // true  → 指数保持不变（相当于「按同一档位缴到底」）
+                               // false → 基数固定，指数逐年下降（「以后就按这个数缴」）
   accountBalance: 0,           // 当前个人账户累计储存额（元）
   deemedMonths: 0,             // 视同缴费年限（月），1990 年代统账结合前的工龄
   deemedIndex: 0.6,            // 视同缴费指数
@@ -449,6 +473,9 @@ export function normalizeInput(input = {}) {
     paidIndex: num(input.paidIndex, DEFAULT_INPUT.paidIndex, 0.1, 5),
     futureMonths: Math.round(num(input.futureMonths, DEFAULT_INPUT.futureMonths, 0, 600)),
     futureIndex: num(input.futureIndex, DEFAULT_INPUT.futureIndex, 0.1, 5),
+    monthlyBase: Math.round(num(input.monthlyBase, DEFAULT_INPUT.monthlyBase, 0, 1_000_000)),
+    futureMonthlyBase: Math.round(num(input.futureMonthlyBase, DEFAULT_INPUT.futureMonthlyBase, 0, 1_000_000)),
+    baseFollowsAverage: input.baseFollowsAverage !== false,
     accountBalance: num(input.accountBalance, DEFAULT_INPUT.accountBalance, 0, 1e9),
     deemedMonths: Math.round(num(input.deemedMonths, DEFAULT_INPUT.deemedMonths, 0, 600)),
     deemedIndex: num(input.deemedIndex, DEFAULT_INPUT.deemedIndex, 0.1, 5),
@@ -488,6 +515,74 @@ export function baseAmountAt(input, year) {
 }
 
 /**
+ * 某一年的月缴费基数。只在金额模式下有意义（`monthlyBase > 0`）。
+ *
+ * - `baseFollowsAverage` 为 true：基数随社平同比例上调，缴费指数因此**保持不变**
+ *   —— 这对应「以后继续按现在这个档位缴」。
+ * - 为 false：基数固定在填写的金额上，而社平还在涨，指数**逐年下滑**
+ *   —— 这对应「以后就按这个数缴，不再跟着调」。
+ *
+ * @param {typeof DEFAULT_INPUT} input 完整输入。
+ * @param {number} year 目标年份。
+ * @param {{year: number, month: number}} asOfYearMonth 起算年月。
+ * @returns {number} 该年的月缴费基数（元）。未启用金额模式时返回 0。
+ */
+export function contributionBaseFor(input, year, asOfYearMonth) {
+  if (input.monthlyBase <= 0) return 0
+  const start = input.futureMonthlyBase > 0 ? input.futureMonthlyBase : input.monthlyBase
+  if (!input.baseFollowsAverage) return start
+  const steps = year - asOfYearMonth.year
+  return start * (1 + input.baseGrowthRate) ** steps
+}
+
+/**
+ * 某一年的缴费指数。指数 = 当年缴费基数 ÷ 当年社平。
+ *
+ * 未启用金额模式时退回 {@link DEFAULT_INPUT.futureIndex}，所以两种模式可以无差别地
+ * 被下游调用。
+ *
+ * @param {typeof DEFAULT_INPUT} input 完整输入。
+ * @param {number} year 目标年份。
+ * @param {{year: number, month: number}} asOfYearMonth 起算年月。
+ * @returns {number} 该年的缴费指数。
+ */
+export function contributionIndexFor(input, year, asOfYearMonth) {
+  if (input.monthlyBase <= 0) return input.futureIndex
+  const social = baseAmountAt(input, year)
+  if (social <= 0) return input.futureIndex
+  const raw = contributionBaseFor(input, year, asOfYearMonth) / social
+  // 缴费基数受「全省社平的 60%–300%」约束，所以指数天然落在 [0.6, 3.0]。
+  // 不夹的话，填一个远低于社平的基数会算出 0.4 之类的值 —— 那种档位在多数省份
+  // 根本不让你缴，因为它不满足基数下限。
+  return Math.min(MAX_INDEX, Math.max(MIN_INDEX, raw))
+}
+
+/**
+ * 未来缴费期的**逐月加权平均指数**。
+ *
+ * 指数模式下每个月都是同一个值，所以直接返回它；金额模式下逐月算，因此「基数固定、
+ * 社平上涨」导致的指数逐年下滑会被如实反映进平均值 —— 这正是固定指数算不出来的东西。
+ *
+ * @param {typeof DEFAULT_INPUT} input 完整输入。
+ * @param {{year: number, month: number}} retireYearMonth 退休年月。
+ * @param {{year: number, month: number}} asOfYearMonth 起算年月。
+ * @returns {{average: number, months: number}} 平均值与实际参与计算的月数。
+ */
+export function futureAverageIndex(input, retireYearMonth, asOfYearMonth) {
+  const horizon = Math.max(0, monthsBetween(asOfYearMonth, retireYearMonth))
+  const months = Math.min(input.futureMonths, horizon)
+  if (months <= 0) return { average: input.futureIndex, months: 0 }
+  if (input.monthlyBase <= 0) return { average: input.futureIndex, months }
+
+  let sum = 0
+  for (let step = 0; step < months; step += 1) {
+    const cursor = yearMonthOf(monthIndexOf(asOfYearMonth) + step)
+    sum += contributionIndexFor(input, cursor.year, asOfYearMonth)
+  }
+  return { average: sum / months, months }
+}
+
+/**
  * 逐月推演个人账户储存额到退休当月。
  *
  * 两件事同时发生：账户余额按月复利计息（记账利率折算成月利率），缴费月里
@@ -513,8 +608,13 @@ export function projectAccount(input, retireYearMonth, asOfYearMonth) {
     const cursor = yearMonthOf(monthIndexOf(asOfYearMonth) + step)
     balance *= 1 + monthlyRate
     if (step < monthsPaid) {
+      // 两种模式在这里合流：都先得到「这个月的缴费基数」，再按 8% 计入个人账户。
+      // 金额模式直接用真实基数，所以「基数固定、社平上涨」时记账额也不会被虚增。
       const socialAverage = baseAmountAt(input, cursor.year)
-      const deposit = socialAverage * input.futureIndex * 0.08
+      const contributionBase = input.monthlyBase > 0
+        ? contributionBaseFor(input, cursor.year, asOfYearMonth)
+        : socialAverage * input.futureIndex
+      const deposit = contributionBase * 0.08
       balance += deposit
       contributed += deposit
     }
@@ -572,19 +672,33 @@ export function compute(rawInput = {}, now = new Date()) {
   const daysUntilRetire = Math.ceil((retireAt.getTime() - now.getTime()) / DAY_MS)
 
   // —— 缴费年限 ——
-  const totalPaidMonths = input.paidMonths + input.futureMonths + input.deemedMonths
+  // 未来真正能缴的月数：说「打算再缴 30 年」但 27 年后就到退休年龄了，只能算 27 年。
+  // 此前直接拿计划月数当缴费年限，会凭空多出几年，缴费年限和养老金一起虚高。
+  const future = futureAverageIndex(input, actual.yearMonth, asOfYearMonth)
+
+  const totalPaidMonths = input.paidMonths + future.months + input.deemedMonths
   const requiredMonths = minimumContributionMonths(actual.yearMonth)
   const meetsMinimum = totalPaidMonths >= requiredMonths
 
-  // 综合平均缴费指数：实际缴费与视同缴费按各自月数加权。基础养老金用它。
-  const weightedMonths = input.paidMonths + input.futureMonths + input.deemedMonths
+  // 综合平均缴费指数：三段各自按实际月数加权。
+  //
+  // 未来那一段在金额模式下是逐月算出来后求平均的，所以「基数固定不动、社平逐年上涨」
+  // 导致的指数下滑会被如实反映 —— 这是单一固定指数表达不出来的。
+  const weightedMonths = totalPaidMonths
   const weightedSum = input.paidMonths * input.paidIndex
-    + input.futureMonths * input.futureIndex
+    + future.months * future.average
     + input.deemedMonths * input.deemedIndex
   const averageIndex = weightedMonths > 0 ? weightedSum / weightedMonths : 0
 
-  // —— 计发基数：用退休上一年度的值 ——
-  const baseAtRetirement = baseAmountAt(input, actual.yearMonth.year - 1)
+  // —— 计发基数 ——
+  //
+  // 用**退休当年**公布的计发基数。各省的计发基本就是按「上年度全口径社平」制定的，
+  // 所以「退休时用上年度社平」与「用退休当年的计发基数」是同一件事的两种说法：
+  // 2041 年 3 月退休 → 用 2041 年的计发基数。
+  //
+  // 此前用的是 retirementYear - 1，等于少算一年增长。实操上当年基数多在年中公布，
+  // 之前先按上一年预发、公布后重算补发 —— 这里算的是最终核定值。
+  const baseAtRetirement = baseAmountAt(input, actual.yearMonth.year)
 
   // —— 个人账户 ——
   const account = projectAccount(input, actual.yearMonth, asOfYearMonth)
@@ -635,6 +749,13 @@ export function compute(rawInput = {}, now = new Date()) {
     totalPaidYears: totalYears,
     requiredMonths,
     meetsMinimum,
+
+    // 缴费基数模式：让调用方知道指数是怎么来的
+    indexMode: input.monthlyBase > 0 ? 'amount' : 'index',
+    currentMonthlyBase: input.monthlyBase,
+    effectiveCurrentIndex: contributionIndexFor(input, asOfYearMonth.year, asOfYearMonth),
+    futureAverageIndex: future.average,
+    futurePaidMonths: future.months,
 
     // 待遇
     averageIndex,
@@ -705,8 +826,13 @@ export function formatReport(result) {
     lines.push(`  · 过渡性养老金　￥${formatMoney(result.transitionalPension)}`)
   }
   lines.push('')
-  lines.push(`缴费年限：${formatMonths(result.totalPaidMonths)}（最低要求 ${formatMonths(result.requiredMonths)}，${result.meetsMinimum ? '已满足' : '未满足'}`)
-  lines.push(`平均缴费指数：${result.averageIndex.toFixed(4)}`)
+  lines.push(`缴费年限：${formatMonths(result.totalPaidMonths)}（最低要求 ${formatMonths(result.requiredMonths)}，${result.meetsMinimum ? '已满足' : '未满足'}）`)
+  if (result.indexMode === 'amount') {
+    lines.push(`缴费基数：${formatMoney(result.currentMonthlyBase)} 元/月（按金额推算，当前指数 ${result.effectiveCurrentIndex.toFixed(4)}）`)
+    lines.push(`平均缴费指数：${result.averageIndex.toFixed(4)}（未来 ${formatMonths(result.futurePaidMonths)} 的均值 ${result.futureAverageIndex.toFixed(4)}）`)
+  } else {
+    lines.push(`平均缴费指数：${result.averageIndex.toFixed(4)}（已缴 ${input.paidIndex.toFixed(2)} / 未来 ${input.futureIndex.toFixed(2)}）`)
+  }
   lines.push(`计发基数（${actual.yearMonth.year - 1} 年）：￥${formatMoney(result.baseAtRetirement)}/月`)
   lines.push(`个人账户退休时余额：￥${formatMoney(result.projectedAccountBalance)}（计发月数 ${result.annuityMonths}）`)
   lines.push(`养老金替代率：${formatPercent(result.replacementRate)}（对计发基数）`)

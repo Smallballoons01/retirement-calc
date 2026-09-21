@@ -31,6 +31,12 @@ const INITIAL = {
   paidIndex: 0.6,
   futureMonths: 30 * 12,
   futureIndex: 0.6,
+  // 未来缴费的两种填法，默认走指数（说得出「按 60% 档缴」的人更多）。
+  // monthlyBase > 0 即切到金额模式，指数由「基数 ÷ 当年社平」现算。
+  futureMode: 'index',
+  monthlyBase: 0,
+  futureMonthlyBase: 0,
+  baseFollowsAverage: true,
   accountBalance: 60_000,
   deemedMonths: 0,
   deemedIndex: 0.6,
@@ -75,6 +81,25 @@ function buildStaticControls() {
   $('province').innerHTML = PROVINCES
     .map(province => `<option value="${province.code}">${province.name}</option>`)
     .join('')
+
+  // 未来缴费的两种填法：说得出「按 60% 档缴」的用指数，说得出「我基数一万」的用金额。
+  $('futureModeSeg').innerHTML = [
+    { value: 'index', label: '按缴费指数' },
+    { value: 'amount', label: '按缴费基数' },
+  ].map(item => `
+    <label>
+      <input type="radio" name="futureMode" value="${item.value}">
+      <span>${item.label}</span>
+    </label>`).join('')
+
+  $('followSeg').innerHTML = [
+    { value: 'follow', label: '随社平上调' },
+    { value: 'fixed', label: '固定不变' },
+  ].map(item => `
+    <label>
+      <input type="radio" name="followMode" value="${item.value}">
+      <span>${item.label}</span>
+    </label>`).join('')
 }
 
 /* ── 表单读取与回写 ──────────────────────────────────────── */
@@ -93,6 +118,10 @@ function writeForm() {
   $('futureYears').value = Math.floor(state.futureMonths / 12)
   $('futureMonthsExtra').value = state.futureMonths % 12
   $('futureIndex').value = state.futureIndex
+  document.querySelector(`input[name="futureMode"][value="${state.futureMode}"]`).checked = true
+  $('monthlyBase').value = state.monthlyBase
+  $('futureMonthlyBase').value = state.futureMonthlyBase
+  document.querySelector(`input[name="followMode"][value="${state.baseFollowsAverage ? 'follow' : 'fixed'}"]`).checked = true
 
   $('accountBalance').value = state.accountBalance
   $('province').value = state.province
@@ -129,6 +158,13 @@ function readForm() {
 
     futureMonths: Math.max(0, int('futureYears', 0)) * 12 + Math.max(0, int('futureMonthsExtra', 0)),
     futureIndex: Number($('futureIndex').value),
+
+    // 金额模式。`monthlyBase` 只在切换那一下补默认值（见 wireEvents），
+    // 这里不再擅自回填 —— 否则会出现「输入框空着、结果却按某个数算」的口径分裂。
+    futureMode: document.querySelector('input[name="futureMode"]:checked').value,
+    monthlyBase: Math.max(0, Number($('monthlyBase').value) || 0),
+    futureMonthlyBase: Math.max(0, Number($('futureMonthlyBase').value) || 0),
+    baseFollowsAverage: document.querySelector('input[name="followMode"]:checked').value === 'follow',
 
     accountBalance: Math.max(0, Number($('accountBalance').value) || 0),
     province: $('province').value,
@@ -363,13 +399,24 @@ function renderSensitivity(result) {
   scenario('继续多缴 5 年', { futureMonths: baseInput.futureMonths + 60 },
     `缴费年限 ${formatMonths(baseInput.paidMonths + baseInput.futureMonths)} → ${formatMonths(baseInput.paidMonths + baseInput.futureMonths + 60)}`)
 
-  scenario('全程缴费档次提高 0.2',
-    {
-      paidIndex: Math.min(3, baseInput.paidIndex + 0.2),
-      futureIndex: Math.min(3, baseInput.futureIndex + 0.2),
-      deemedIndex: Math.min(3, baseInput.deemedIndex + 0.2),
-    },
-    `平均指数 ${baseInput.paidIndex.toFixed(2)} → ${Math.min(3, baseInput.paidIndex + 0.2).toFixed(2)}`)
+  // 金额模式下「提高档次」要靠加钱，改 futureIndex 是改不动的 —— 那种情况下这一行
+  // 会显示「无变化」，看着像坏了。所以按模式换一套情景。
+  if (result.indexMode === 'amount') {
+    const current = baseInput.monthlyBase
+    const raised = Math.round(current * 1.2)
+    const future = baseInput.futureMonthlyBase > 0 ? baseInput.futureMonthlyBase : current
+    scenario('月缴费基数提高 20%',
+      { monthlyBase: raised, futureMonthlyBase: Math.round(future * 1.2) },
+      `${formatMoney(current)} → ${formatMoney(raised)} 元/月`)
+  } else {
+    scenario('全程缴费档次提高 0.2',
+      {
+        paidIndex: Math.min(3, baseInput.paidIndex + 0.2),
+        futureIndex: Math.min(3, baseInput.futureIndex + 0.2),
+        deemedIndex: Math.min(3, baseInput.deemedIndex + 0.2),
+      },
+      `平均指数 ${baseInput.paidIndex.toFixed(2)} → ${Math.min(3, baseInput.paidIndex + 0.2).toFixed(2)}`)
+  }
 
   scenario('弹性延后 3 年退休', { earlyMonths: 0, delayMonths: 36 },
     '多缴 3 年、计发月数变小')
@@ -393,9 +440,27 @@ function renderSensitivity(result) {
     }).join('')}</tbody>`
 }
 
+/**
+ * 金额模式下的换算提示。
+ *
+ * 反推「当年社平」来告诉用户这个基数对应什么档位 —— 光给一个金额，用户没法判断
+ * 自己填得合不合理；给出档位，他能立刻对上「我一直按 60% 缴」这种自我认知。
+ */
+function renderModeNote(result) {
+  const target = $('monthlyBaseHint')
+  if (result.indexMode !== 'amount' || result.effectiveCurrentIndex <= 0) {
+    target.textContent = ''
+    return
+  }
+  const socialNow = result.currentMonthlyBase / result.effectiveCurrentIndex
+  target.textContent = `按 ${result.asOfText} 的社会平均工资 ${formatMoney(socialNow)} 元估算，`
+    + `这个基数对应 ${result.effectiveCurrentIndex.toFixed(2)} 档（国家规定在 0.6–3.0 之间）。`
+}
+
 function renderAll(result) {
   lastResult = result
   renderHero(result)
+  renderModeNote(result)
   renderMetrics(result)
   renderCallout(result)
   renderBreakdown(result)
@@ -405,11 +470,23 @@ function renderAll(result) {
 
 /* ── 事件接线 ───────────────────────────────────────────── */
 
+/**
+ * 表单状态 → 计算输入。
+ *
+ * `futureMode` 只是界面上的一个选择，core 不认它 —— core 判断金额模式只看
+ * `monthlyBase > 0`。翻译放在这里，免得核心为了迁就 UI 多出一个没有物理含义的字段。
+ */
+function inputOf(current) {
+  const { futureMode, ...rest } = current
+  if (futureMode === 'amount') return rest
+  return { ...rest, monthlyBase: 0, futureMonthlyBase: 0 }
+}
+
 /** 重算 + 重绘。任何输入事件都走这里。 */
 function refresh() {
   readForm()
   updateDerivedLabels()
-  renderAll(compute(state, new Date()))
+  renderAll(compute(inputOf(state), new Date()))
 }
 
 /** 与结果无关、只反映输入本身的实时标签。 */
@@ -419,6 +496,16 @@ function updateDerivedLabels() {
   $('deemedIndexVal').textContent = `${state.deemedIndex.toFixed(2)}（${formatPercent(state.deemedIndex, 0)} 档）`
   $('earlyVal').textContent = state.earlyMonths === 0 ? '不提前' : `${state.earlyMonths} 个月`
   $('delayVal').textContent = state.delayMonths === 0 ? '不延后' : `${state.delayMonths} 个月`
+
+  const amountMode = state.futureMode === 'amount'
+  $('futureIndexField').hidden = amountMode
+  $('futureAmountFields').hidden = !amountMode
+  $('futureModeHint').textContent = amountMode
+    ? '直接填月缴费基数。指数由「基数 ÷ 当年社平」现算 —— 基数不跟着涨，指数就会逐年下滑。'
+    : '填缴费档次（= 缴费基数 ÷ 社平）。适合「我一直按 60% 档缴」这类说法。'
+  $('followHint').textContent = state.baseFollowsAverage
+    ? '基数随社平同比例上调，缴费指数保持不变 —— 相当于「以后继续按同一档位缴」。'
+    : '基数固定在这个金额上、社平继续涨，缴费指数会逐年下滑，把平均指数拉低。'
 
   $('categoryHint').textContent = CATEGORIES[state.category].description
 
@@ -466,6 +553,18 @@ function wireEvents() {
       state.baseYear = defaultBaseYearFor(code)
       $('baseAmount').value = Math.round(state.baseAmount)
     }
+
+    // 切到金额模式时补一个「等于当前档位」的起点。不补的话输入框是空的、数字也不动，
+    // 用户会以为切换坏了；而这个默认值把当前指数原样翻译成了金额，切换前后结果连续。
+    if (event.target.name === 'futureMode'
+      && event.target.value === 'amount'
+      && (Number($('monthlyBase').value) || 0) <= 0) {
+      const base = Number($('baseAmount').value) || state.baseAmount
+      const socialNow = base * (1 + state.baseGrowthRate) ** (new Date().getFullYear() - state.baseYear)
+      const index = Number($('paidIndex').value) || state.paidIndex
+      $('monthlyBase').value = Math.round(socialNow * index)
+    }
+
     scheduleRefresh()
   })
 

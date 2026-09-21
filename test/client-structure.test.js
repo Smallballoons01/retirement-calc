@@ -60,6 +60,19 @@ const KNOWN_TOKENS = new Set([
   'scrollbar-bg-l2', 'scrollbar-hover-l2', 'separator-primary',
 ])
 
+test('client.js 能通过语法解析', () => {
+  // 这条补的是一个真实的漏洞。此前客户端测试只做**文本扫描**，从不解析语法，
+  // 于是 STYLE 那段模板字符串里一个没转义的反引号（CSS 注释里写了一句
+  // `brand-primary`）直接终止了字符串 —— 整个面板根本加载不出来，
+  // 而当时 51 项测试、浏览器端验证、真机组合验证**全部是绿的**。
+  //
+  // `new Function` 只编译不执行，正好当语法闸门用；报错信息里点明最常见的原因。
+  assert.doesNotThrow(
+    () => new Function(source), // eslint-disable-line no-new-func
+    'client.js 无法解析。最常见的原因是模板字符串（如 STYLE）里出现了未转义的反引号或 ${。',
+  )
+})
+
 test('编辑控件定义在模块级，而不是组件内部', () => {
   // 「输入一个字符就要重新点一次」的守门人。机制：控件定义在组件体内时，父组件每次
   // 重渲染都产生新的函数引用，React 据此判定元素类型变了，卸载并重建整棵子树 ——

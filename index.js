@@ -61,6 +61,9 @@ const PROFILE_FIELDS = [
   'birthYear', 'birthMonth', 'category', 'province', 'insuredType',
   'paidMonths', 'paidIndex', 'futureMonths', 'futureIndex', 'accountBalance',
   'deemedMonths', 'deemedIndex', 'earlyMonths', 'delayMonths',
+  // 缴费基数的金额模式。三个字段一起出现：`monthlyBase > 0` 即启用，
+  // 那种情况下 futureIndex 不再参与计算。
+  'monthlyBase', 'futureMonthlyBase', 'baseFollowsAverage',
   'baseAmount', 'baseYear', 'baseGrowthRate', 'accountInterestRate', 'transitionRate',
 ]
 
@@ -80,6 +83,9 @@ const DEFAULT_PROFILE = Object.freeze({
   deemedIndex: 0.6,
   earlyMonths: 0,
   delayMonths: 0,
+  monthlyBase: 0,
+  futureMonthlyBase: 0,
+  baseFollowsAverage: true,
   baseAmount: 0,
   baseYear: 0,
   baseGrowthRate: 0.02,
@@ -138,6 +144,9 @@ const ARG_FIELD_MAP = {
   deemed_index: 'deemedIndex',
   early_months: 'earlyMonths',
   delay_months: 'delayMonths',
+  monthly_base: 'monthlyBase',
+  future_monthly_base: 'futureMonthlyBase',
+  base_follows_average: 'baseFollowsAverage',
   base_amount: 'baseAmount',
   base_year: 'baseYear',
   base_growth_rate: 'baseGrowthRate',
@@ -200,7 +209,11 @@ function toToolPayload(result, notes) {
     total_paid_months: result.totalPaidMonths,
     required_months: result.requiredMonths,
     meets_minimum: result.meetsMinimum,
+    // 说「打算再缴 30 年」但 27 年后就到退休年龄时，只有 27 年算数。
+    // 单独暴露出来，免得调用方以为计划月数就是实际月数。
+    future_paid_months: result.futurePaidMonths,
     average_index: Number(result.averageIndex.toFixed(4)),
+    index_mode: result.indexMode,
     annuity_months: result.annuityMonths,
     projected_account_balance: round2(result.projectedAccountBalance),
     base_at_retirement: round2(result.baseAtRetirement),
@@ -324,6 +337,9 @@ export function apply(ctx, config) {
       deemed_index: { type: 'number', description: '视同缴费指数。' },
       early_months: { type: 'number', description: '弹性提前退休的月数，最长 36，且不得低于原法定退休年龄。' },
       delay_months: { type: 'number', description: '弹性延后退休的月数，最长 36。与 early_months 互斥。' },
+      monthly_base: { type: 'number', description: '当前月缴费基数（元）。填了就切到金额模式：指数由「基数 ÷ 当年社平」现算，个人账户也按真实基数记账。填 0 则回到按指数计算。当用户只说得清「我基数是八千/一万」而说不清档位时用这个。' },
+      future_monthly_base: { type: 'number', description: '未来的月缴费基数（元）。0 表示沿用 monthly_base；用户说「以后打算降到多少」时填这里。' },
+      base_follows_average: { type: 'boolean', description: '未来的缴费基数是否随社平同步上调。true（默认）= 继续按同一档位缴，缴费指数保持不变；false = 基数固定不动，社平继续涨会把缴费指数逐年拉低。' },
       base_amount: { type: 'number', description: '手动指定养老金计发基数（元/月）。不填则用参保地的默认值。' },
       base_year: { type: 'number', description: '计发基数对应的年份。不填则用省份默认年份。' },
       base_growth_rate: { type: 'number', description: '计发基数年增长率的假设，0.02 表示 2%。' },
@@ -347,7 +363,9 @@ export function apply(ctx, config) {
           total_paid_months: { type: 'number', required: true },
           required_months: { type: 'number', required: true },
           meets_minimum: { type: 'boolean', required: true },
+          future_paid_months: { type: 'number', required: true },
           average_index: { type: 'number', required: true },
+          index_mode: { type: 'string', required: true },
           annuity_months: { type: 'number', required: true },
           projected_account_balance: { type: 'number', required: true },
           base_at_retirement: { type: 'number', required: true },
@@ -688,7 +706,11 @@ function describeProfile(profile) {
     `人群：${spec.label}（原法定 ${spec.originalAge} 周岁）`,
     `参保地：${province?.name ?? profile.province}`,
     `已缴：${formatMonths(profile.paidMonths)}，平均指数 ${profile.paidIndex.toFixed(2)}`,
-    `计划续缴：${formatMonths(profile.futureMonths)}，指数 ${profile.futureIndex.toFixed(2)}`,
+    profile.monthlyBase > 0
+      ? `计划续缴：${formatMonths(profile.futureMonths)}，按月缴费基数 ${formatMoney(profile.monthlyBase)} 元`
+        + `（未来 ${profile.futureMonthlyBase > 0 ? `${formatMoney(profile.futureMonthlyBase)} 元` : '沿用'}，`
+        + `${profile.baseFollowsAverage ? '随社平同步上调' : '固定不变'}）`
+      : `计划续缴：${formatMonths(profile.futureMonths)}，指数 ${profile.futureIndex.toFixed(2)}`,
     `个人账户余额：￥${formatMoney(profile.accountBalance)}`,
     profile.deemedMonths > 0 ? `视同缴费：${formatMonths(profile.deemedMonths)}` : '无视同缴费年限',
     profile.earlyMonths > 0 ? `弹性提前：${profile.earlyMonths} 个月` : '',

@@ -16,6 +16,7 @@ import test from 'node:test'
 import {
   annuityMonths,
   applyFlexible,
+  baseAmountAt,
   compute,
   findProvince,
   formatMonths,
@@ -284,6 +285,103 @@ test('距退休天数与基础结论对得上', () => {
   // 上限：不超过当地计发基数的 1.2 倍量级，下限：明显高于最低生活线
   assert.ok(result.monthlyPension > 2000 && result.monthlyPension < 12_000, `月养老金 ${result.monthlyPension}`)
   assert.ok(result.daysUntilRetire > 0)
+})
+
+/* ── 缴费基数（金额模式） ──────────────────────────────────
+ *
+ * 现实里很多人说得清自己的缴费基数（「现在一万」），说不清抽象的缴费指数。
+ * 而这两者不等价：基数是个确定金额，社平却逐年涨，指数 = 基数 ÷ 当年社平
+ * 会因此逐年下滑。用固定指数去近似，会把养老金算高。
+ */
+
+/** 金额模式的公共输入。 */
+const AMOUNT_BASE = {
+  birthYear: 1990, birthMonth: 1, category: 'male', province: 'guangdong',
+  paidMonths: 8 * 12, paidIndex: 0.6, deemedMonths: 0,
+  futureMonths: 30 * 12, accountBalance: 60_000,
+  baseGrowthRate: 0.02, accountInterestRate: 0,
+}
+
+test('金额模式：基数随社平同步上涨时，缴费指数恒定', () => {
+  const result = compute({ ...AMOUNT_BASE, monthlyBase: 10_000, baseFollowsAverage: true }, at(2026, 1))
+  assert.equal(result.indexMode, 'amount')
+
+  // 指数 = 基数 ÷ 当年社平。注意分母是**当年**的社平，不是填进去的 2025 年计发基数：
+  // 2026 年缴费用的社平已经是 9493 × 1.02 = 9682.86。
+  const social2026 = 9493 * 1.02
+  assert.ok(Math.abs(result.effectiveCurrentIndex - 10_000 / social2026) < 1e-9,
+    `当前指数应为 ${(10_000 / social2026).toFixed(6)}，实际 ${result.effectiveCurrentIndex.toFixed(6)}`)
+
+  // 基数与社平同比例上涨 → 指数在时间上恒定，这正是「继续按同一档位缴」的含义
+  assert.ok(Math.abs(result.futureAverageIndex - result.effectiveCurrentIndex) < 1e-9,
+    '基数随社平同步时，未来平均指数应与当前指数相同')
+})
+
+test('金额模式：基数固定不动时指数逐年下滑，养老金随之降低', () => {
+  const follows = compute({ ...AMOUNT_BASE, monthlyBase: 10_000, baseFollowsAverage: true }, at(2026, 1))
+  const frozen = compute({ ...AMOUNT_BASE, monthlyBase: 10_000, baseFollowsAverage: false }, at(2026, 1))
+
+  // 「以后就按一万缴，不跟着社平调」→ 指数被社平上涨摊薄
+  assert.ok(frozen.futureAverageIndex < follows.futureAverageIndex,
+    `固定基数应拉低平均指数：${frozen.futureAverageIndex.toFixed(4)} 应低于 ${follows.futureAverageIndex.toFixed(4)}`)
+  assert.ok(frozen.monthlyPension < follows.monthlyPension,
+    '基数不随社平调整，养老金应当更低')
+  // 差距必须有实际意义，不是四舍五入的噪声
+  const gap = (follows.monthlyPension - frozen.monthlyPension) / follows.monthlyPension
+  assert.ok(gap > 0.05, `两种口径的差距只有 ${(gap * 100).toFixed(1)}%，与预期不符`)
+})
+
+test('金额模式：缴费基数受 60%–300% 上下限夹取', () => {
+  // 3000 元远低于广东社平的 60%，多数省份根本不允许按这个数缴
+  const tooLow = compute({ ...AMOUNT_BASE, monthlyBase: 3000, baseFollowsAverage: false }, at(2026, 1))
+  assert.equal(tooLow.effectiveCurrentIndex, 0.6, `低于下限的基数应夹到 0.6，实际 ${tooLow.effectiveCurrentIndex}`)
+
+  const tooHigh = compute({ ...AMOUNT_BASE, monthlyBase: 100_000, baseFollowsAverage: false }, at(2026, 1))
+  assert.equal(tooHigh.effectiveCurrentIndex, 3, `高于上限的基数应夹到 3.0，实际 ${tooHigh.effectiveCurrentIndex}`)
+})
+
+test('金额模式与指数模式在等价输入下结果一致', () => {
+  // 「一直按某个档位缴」等价于「基数 = 社平 × 该档位，且随社平同步调整」。
+  //
+  // 这里刻意取 1.2 而不是 0.6：0.6 正好是基数下限对应的指数，任何略低于它的基数都会
+  // 被夹回 0.6，两条路径于是"看起来相等"—— 那是夹取造成的巧合，会把这个测试变成
+  // 假阳性（第一版就是这么写的，实际算出来是 0.5883 被夹成了 0.6）。
+  const target = 1.2
+  const probe = normalizeInput({ ...AMOUNT_BASE })
+  const monthlyBase = Math.round(baseAmountAt(probe, 2026) * target)
+
+  const byIndex = compute({ ...AMOUNT_BASE, futureIndex: target }, at(2026, 1))
+  const byAmount = compute({ ...AMOUNT_BASE, monthlyBase, baseFollowsAverage: true }, at(2026, 1))
+
+  assert.ok(Math.abs(byAmount.effectiveCurrentIndex - target) < 1e-3,
+    `基数 ${monthlyBase} 应对应指数 ${target}，实际 ${byAmount.effectiveCurrentIndex.toFixed(4)}`)
+  assert.ok(Math.abs(byIndex.futureAverageIndex - byAmount.futureAverageIndex) < 1e-3)
+  assert.ok(Math.abs(byIndex.averageIndex - byAmount.averageIndex) < 1e-3,
+    `两种模式的平均指数应一致：${byIndex.averageIndex.toFixed(6)} vs ${byAmount.averageIndex.toFixed(6)}`)
+  // 结论层也要对得上，否则前面几项一致也没意义
+  assert.ok(Math.abs(byIndex.monthlyPension - byAmount.monthlyPension) < 1,
+    `两种模式的养老金应一致：${byIndex.monthlyPension.toFixed(2)} vs ${byAmount.monthlyPension.toFixed(2)}`)
+})
+
+test('未来的缴费月数超过到退休的实际月数时，只计实际可缴的部分', () => {
+  // 说「打算再缴 50 年」，但 26 年后就到退休年龄了
+  const result = compute({ ...AMOUNT_BASE, futureMonths: 600, monthlyBase: 0, futureIndex: 0.6 }, at(2026, 1))
+  assert.ok(result.futurePaidMonths < 600, '不应把退休之后的年月也算成缴费')
+  assert.equal(result.totalPaidMonths, 8 * 12 + result.futurePaidMonths)
+  // 到退休还有 27 年上下；缴费年限不该因此虚高到 50 年
+  assert.ok(result.totalPaidYears < 40, `总缴费年限 ${result.totalPaidYears} 年明显偏高`)
+})
+
+test('计发基数取退休当年的公布值', () => {
+  // 「退休时用上年度社平」与「用退休当年的计发基数」是同一件事的两种说法：
+  // 各省的计发基数本就是按上年度全口径社平制定的。
+  const result = compute({
+    ...AMOUNT_BASE, baseAmount: 9493, baseYear: 2025, baseGrowthRate: 0.02,
+  }, at(2026, 1))
+  const retireYear = result.retirementYearMonth.year
+  const expected = 9493 * 1.02 ** (retireYear - 2025)
+  assert.ok(Math.abs(result.baseAtRetirement - expected) < 0.01,
+    `计发基数应用 ${retireYear} 年的值（${expected.toFixed(2)}），实际 ${result.baseAtRetirement.toFixed(2)}`)
 })
 
 test('normalizeInput 兜底：空输入不抛错且字段补齐', () => {

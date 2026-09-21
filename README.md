@@ -59,6 +59,35 @@ Taken at the **whole-year** age on the retirement date (Annex to Guofa〔2005〕
 at 50 years 11 months uses the age-50 figure of 195, not 51's. Common values: 50→195,
 55→170, 60→139, 63→117.
 
+### Contribution base: a figure, or a tier
+
+The contribution index is `base ÷ social average` for that year. The pension formula consumes the
+**index**, but most people only know their **base** ("it's 10,000 now"), and the two are not
+interchangeable:
+
+- **Always contributing at the same tier** → the base rises along with the social average, so the
+  index stays put.
+- **A frozen base** → the social average keeps climbing, so the index **slides every year** and drags
+  the average down.
+
+So the tool accepts either. In *by contribution base* mode you enter your current monthly base and
+choose whether it **tracks the social average** or stays **fixed** — only the latter reflects what
+"just keep paying this amount" really costs. At the same 10,000, a frozen base comes out about 15%
+lower.
+
+Supporting rules:
+
+- The base is bounded by **60%–300% of the social average**, so the derived index is clamped to
+  `[0.6, 3.0]`.
+- The individual account is credited at **8% of the real base**, not back-solved from
+  "social average × index".
+- If the planned contribution months exceed the months actually remaining until retirement, only the
+  real ones count.
+
+Conversely, if all you have is the average index printed on your social-insurance statement, entering
+the index directly is simpler — that number already *is* the average of "base ÷ social average" over
+the years.
+
 ### Pension composition
 
 ```
@@ -146,7 +175,7 @@ a number is the point.
 ## Development
 
 ```bash
-npm test              # 45 tests: 17 core formula + 15 plugin behaviour + 7 real cordis composition + 6 client structure
+npm test              # 52 tests: 23 core formula + 15 plugin behaviour + 7 real cordis composition + 7 client structure
 npm run verify        # drive the built page in a headless browser: rendering and live recompute
 npm run verify:plugin # mount on a real WebServer, hit /retire/api over HTTP (touches no profile)
 npm run audit         # secret scan: credentials, home paths, private IPs, emails
