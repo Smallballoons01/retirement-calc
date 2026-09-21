@@ -48,7 +48,7 @@
     "README.zh.md"
   ],
   "scripts": {
-    "test": "node --test test/core.test.js test/plugin.test.js test/integration.test.js",
+    "test": "node --test test/core.test.js test/plugin.test.js test/integration.test.js test/client-structure.test.js",
     "web": "node scripts/build-web.mjs",
     "web:check": "node scripts/build-web.mjs --check",
     "verify": "node scripts/verify-web.mjs",

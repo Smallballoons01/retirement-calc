@@ -148,7 +148,7 @@ ln -s /path/to/retirement_calc/skills/retirement-planner ~/.agents/skills/retire
 ## 开发
 
 ```bash
-npm test              # 39 项：核心公式 17 + 插件行为 15 + 真实 cordis 组合 7
+npm test              # 44 项：核心公式 17 + 插件行为 15 + 真实 cordis 组合 7 + 客户端结构约束 5
 npm run verify        # 无头浏览器跑一遍网页，验证渲染与实时重算
 npm run verify:plugin # 加载真实 WebServer，打真 HTTP 请求验 /retire/api（不碰任何 profile）
 npm run audit         # 敏感信息扫描：凭据、本机路径、内网地址、邮箱

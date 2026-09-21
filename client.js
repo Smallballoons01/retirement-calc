@@ -27,15 +27,29 @@ window.__ModuleLoader__.load({
     /** 面板宽 340，弹出时贴在侧边栏底部按钮的上方。 */
     const PANEL_WIDTH = 340
 
+    /*
+     * 配色上的两条纪律，都是踩过坑之后定下来的：
+     *
+     * 1. **填充色不接主题**。`#3055d6` 这个品牌蓝是写死的，不做成
+     *    `var(--dsw-alias-*)`。原因是那些 token 名无法核实：harness 源码、
+     *    已安装的 `dsh-client-ui-theme` 构建产物里都搜不到它们的定义，而
+     *    "看似该是背景色的 token 实际是浅色文字色" 会让选中态变成白底白字。
+     *    宁可少一点主题适配，也不要出现读不出字的状态。
+     *
+     * 2. **前景与背景的兜底值必须成对。** 曾经写成
+     *    `background: var(--…, #fff)` 配 `color: var(--…, inherit)`：token
+     *    一旦不生效，就是纯白底配继承来的浅色字。现在两者都兜到浅色主题的
+     *    那一对（`#ffffff` / `#101828`），要么一起跟随主题，要么一起退回浅色。
+     */
     const STYLE = `
-.dsh-rc-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-text-primary, inherit); font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.dsh-rc-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-text-primary, #101828); font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .dsh-rc-button:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); }
 .dsh-rc-button .dsh-rc-days { font-weight: 650; }
-.dsh-rc-panel { position: fixed; z-index: 1000; width: ${PANEL_WIDTH}px; max-height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-text-primary, inherit); border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.25)); border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.2); font-size: 12px; }
+.dsh-rc-panel { position: fixed; z-index: 1000; width: ${PANEL_WIDTH}px; max-height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-text-primary, #101828); border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.25)); border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.2); font-size: 12px; }
 .dsh-rc-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.15)); font-weight: 600; }
 .dsh-rc-head .dsh-rc-spacer { flex: 1; }
 .dsh-rc-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-text-tertiary, #888); cursor: pointer; font-size: 13px; }
-.dsh-rc-x:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); color: var(--dsw-alias-text-primary, inherit); }
+.dsh-rc-x:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); color: var(--dsw-alias-text-primary, #101828); }
 .dsh-rc-body { overflow-y: auto; padding: 12px; display: grid; gap: 12px; }
 
 .dsh-rc-heroes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -43,7 +57,7 @@ window.__ModuleLoader__.load({
 .dsh-rc-hero-k { color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; margin-bottom: 3px; }
 .dsh-rc-hero-v { font-size: 22px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .dsh-rc-hero-warm .dsh-rc-hero-v { color: var(--dsw-alias-state-warn-primary, #c77700); }
-.dsh-rc-hero-brand .dsh-rc-hero-v { color: var(--dsw-alias-brand-text, #4c8dff); }
+.dsh-rc-hero-brand .dsh-rc-hero-v { color: #3055d6; }
 .dsh-rc-hero-n { margin-top: 3px; color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; }
 
 .dsh-rc-rows { display: grid; gap: 5px; }
@@ -57,7 +71,7 @@ window.__ModuleLoader__.load({
 .dsh-rc-split .dsh-rc-row b { font-weight: 500; }
 
 .dsh-rc-sect { border-top: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.15)); padding-top: 10px; }
-.dsh-rc-sect > summary, .dsh-rc-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: var(--dsw-alias-text-primary, inherit); list-style: none; user-select: none; }
+.dsh-rc-sect > summary, .dsh-rc-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: var(--dsw-alias-text-primary, #101828); list-style: none; user-select: none; }
 .dsh-rc-sect > summary::-webkit-details-marker { display: none; }
 .dsh-rc-sect > summary::before { content: '▸'; color: var(--dsw-alias-text-tertiary, #888); transition: transform .15s; display: inline-block; }
 .dsh-rc-sect[open] > summary::before { transform: rotate(90deg); }
@@ -68,11 +82,11 @@ window.__ModuleLoader__.load({
 .dsh-rc-inline > input[type=number] { width: 62px; }
 .dsh-rc-inline > select { flex: 1; min-width: 0; }
 .dsh-rc-panel input[type=number], .dsh-rc-panel select { box-sizing: border-box; min-height: 28px; padding: 3px 7px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
-.dsh-rc-panel input[type=number]:focus, .dsh-rc-panel select:focus { outline: none; border-color: var(--dsw-alias-brand-text, #4c8dff); }
-.dsh-rc-panel input[type=range] { width: 100%; accent-color: var(--dsw-alias-brand-text, #4c8dff); }
+.dsh-rc-panel input[type=number]:focus, .dsh-rc-panel select:focus { outline: none; border-color: #3055d6; }
+.dsh-rc-panel input[type=range] { width: 100%; accent-color: #3055d6; }
 .dsh-rc-seg { display: flex; gap: 4px; }
 .dsh-rc-seg button { flex: 1; min-height: 28px; padding: 3px 6px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
-.dsh-rc-seg button.dsh-rc-on { border-color: var(--dsw-alias-brand-text, #4c8dff); background: var(--dsw-alias-brand-text, #4c8dff); color: #fff; font-weight: 600; }
+.dsh-rc-seg button.dsh-rc-on { border-color: #3055d6; background: #3055d6; color: #fff; font-weight: 600; }
 .dsh-rc-slider-head { display: flex; justify-content: space-between; align-items: baseline; }
 .dsh-rc-slider-head b { font-variant-numeric: tabular-nums; }
 
@@ -80,12 +94,18 @@ window.__ModuleLoader__.load({
 .dsh-rc-actions button { min-height: 28px; padding: 4px 10px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .dsh-rc-actions button:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); }
 .dsh-rc-actions button:disabled { opacity: .5; cursor: default; }
-.dsh-rc-actions button.dsh-rc-primary { color: #fff; background: var(--dsw-alias-brand-text, #4c8dff); border-color: var(--dsw-alias-brand-text, #4c8dff); }
+.dsh-rc-actions button.dsh-rc-primary { color: #fff; background: #3055d6; border-color: #3055d6; }
 .dsh-rc-actions .dsh-rc-grow { flex: 1; }
 
 .dsh-rc-note { color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; line-height: 1.5; }
 .dsh-rc-warn { color: var(--dsw-alias-state-warn-label, #b57708); font-size: 11px; line-height: 1.5; }
 .dsh-rc-err { color: var(--dsw-alias-state-error-primary, #d64545); font-size: 11px; }
+
+/* 选中文字。dsh 自身没有任何 ::selection 规则（在源码与已安装产物里都搜过），
+   浏览器默认高亮在这套外壳里偏淡，选中面板里的数字时几乎看不出选了什么。
+   这里显式给一对高对比配色，并限定在面板作用域内，不外溢到宿主界面。 */
+.dsh-rc-panel ::selection,
+.dsh-rc-panel::selection { background: #cfe0ff; color: #101828; }
 `
 
     /* ── 与宿主端通信 ─────────────────────────────────────── */
@@ -117,6 +137,61 @@ window.__ModuleLoader__.load({
       return `${years}年${rest}个月`
     }
 
+    /* ── 编辑控件 ─────────────────────────────────────────── */
+
+    /**
+     * 面板里的三个编辑控件。
+     *
+     * 它们**必须定义在组件外面**。定义在 `RetirementButton` 内部的话，父组件每次
+     * 重渲染都会生成新的函数引用，React 据此判定元素类型变了，于是卸载并重建整棵
+     * 子树 —— 症状就是「在输入框里敲一个字符，焦点立刻丢失，得重新点一次」。
+     *
+     * 而这个面板几乎每次输入都会 `setDraft` + `setData`，重渲染极其频繁，所以这个
+     * 缺陷是必现的，不是偶发。三个控件都只依赖 props，没有闭包依赖，因此可以安全
+     * 地提到模块级。
+     */
+
+    const NumberField = ({ label, value, onChange, step = 1, min, max, suffix }) => h('label', { className: 'dsh-rc-fl' },
+      h('span', null, label),
+      h('div', { className: 'dsh-rc-inline' },
+        h('input', {
+          type: 'number', value: value ?? 0, step, min, max,
+          onChange: event => onChange(Number(event.target.value)),
+        }),
+        suffix ? h('span', { className: 'dsh-rc-note' }, suffix) : null,
+      ),
+    )
+
+    const Slider = ({ label, value, onChange, min = 0.6, max = 3, step = 0.01 }) => h('div', { className: 'dsh-rc-fl' },
+      h('div', { className: 'dsh-rc-slider-head' },
+        h('span', { className: 'dsh-rc-note' }, label),
+        h('b', null, `${Number(value).toFixed(2)}（${pct(value, 0)}）`),
+      ),
+      h('input', {
+        type: 'range', min, max, step, value,
+        onChange: event => onChange(Number(event.target.value)),
+      }),
+    )
+
+    const MonthYear = ({ label, totalMonths, onChange }) => {
+      const total = Number(totalMonths) || 0
+      return h('div', { className: 'dsh-rc-fl' },
+        h('span', null, label),
+        h('div', { className: 'dsh-rc-inline' },
+          h('input', {
+            type: 'number', min: 0, max: 50, value: Math.floor(total / 12),
+            onChange: event => onChange(Math.max(0, Number(event.target.value)) * 12 + (total % 12)),
+          }),
+          h('span', { className: 'dsh-rc-note' }, '年'),
+          h('input', {
+            type: 'number', min: 0, max: 11, value: total % 12,
+            onChange: event => onChange(Math.floor(total / 12) * 12 + Math.max(0, Math.min(11, Number(event.target.value)))),
+          }),
+          h('span', { className: 'dsh-rc-note' }, '月'),
+        ),
+      )
+    }
+
     /* ── 面板 ─────────────────────────────────────────────── */
 
     function createPanel() {
@@ -132,12 +207,25 @@ window.__ModuleLoader__.load({
         const panelRef = useRef(null)
         const [anchor, setAnchor] = useState(null)
         const previewTimer = useRef(undefined)
+        /** 草稿的同步镜像，让事件回调读到的一定是最新值，而不是可能过期的闭包。 */
+        const draftRef = useRef(null)
+
+        /**
+         * 一处更新草稿：本体与镜像必须同时写，否则会读到一个落后一拍的草稿。
+         *
+         * 包成 `useCallback([], …)` 是因为 `load` 的依赖数组是空的 —— 两个函数都只
+         * 碰稳定引用（ref 与 setter），所以恒等不变量成立，而不是在掩盖真依赖。
+         */
+        const applyDraft = useCallback((next) => {
+          draftRef.current = next
+          setDraft(next)
+        }, [])
 
         const load = useCallback(async () => {
           try {
             const value = await api('status')
             setData(value)
-            setDraft(value.profile)
+            applyDraft(value.profile)
             setError('')
           } catch (failure) {
             setError(String(failure.message ?? failure))
@@ -213,14 +301,18 @@ window.__ModuleLoader__.load({
           }
         }, [open])
 
-        /** 改一个字段：更新草稿、送去试算。 */
+        /**
+         * 改一个字段：更新草稿、送去试算。
+         *
+         * 不要写成 `setDraft(previous => { preview(next); return next })` —— 更新器
+         * 里不该有副作用（严格模式下会被调用两次，等于多发一次请求），而且连续两次
+         * 改动会读到同一个过期的 `previous`。读 ref 镜像可以同时避开这两点。
+         */
         const change = (patch) => {
           setNotice('')
-          setDraft(previous => {
-            const next = { ...previous, ...patch }
-            preview(next)
-            return next
-          })
+          const next = { ...(draftRef.current ?? data?.profile ?? {}), ...patch }
+          applyDraft(next)
+          preview(next)
         }
 
         const commit = async () => {
@@ -229,7 +321,7 @@ window.__ModuleLoader__.load({
           try {
             const value = await api('save', { profile: draft })
             setData(value)
-            setDraft(value.profile)
+            applyDraft(value.profile)
             setNotice('已保存')
           } catch (failure) {
             setError(String(failure.message ?? failure))
@@ -244,7 +336,7 @@ window.__ModuleLoader__.load({
           try {
             const value = await api('reset')
             setData(value)
-            setDraft(value.profile)
+            applyDraft(value.profile)
             setNotice('已恢复默认')
           } catch (failure) {
             setError(String(failure.message ?? failure))
@@ -263,46 +355,6 @@ window.__ModuleLoader__.load({
 
         const categories = catalog?.categories ?? []
         const provinces = catalog?.provinceList ?? catalog?.provinces ?? []
-
-        /* —— 编辑控件 —— */
-
-        const NumberField = ({ label, value, onChange, step = 1, min, max, suffix }) => h('label', { className: 'dsh-rc-fl' },
-          h('span', null, label),
-          h('div', { className: 'dsh-rc-inline' },
-            h('input', {
-              type: 'number', value: value ?? 0, step, min, max,
-              onChange: event => onChange(Number(event.target.value)),
-            }),
-            suffix ? h('span', { className: 'dsh-rc-note' }, suffix) : null,
-          ),
-        )
-
-        const Slider = ({ label, value, onChange, min = 0.6, max = 3, step = 0.01 }) => h('div', { className: 'dsh-rc-fl' },
-          h('div', { className: 'dsh-rc-slider-head' },
-            h('span', { className: 'dsh-rc-note' }, label),
-            h('b', null, `${Number(value).toFixed(2)}（${pct(value, 0)}）`),
-          ),
-          h('input', {
-            type: 'range', min, max, step, value,
-            onChange: event => onChange(Number(event.target.value)),
-          }),
-        )
-
-        const MonthYear = ({ label, totalMonths, onChange }) => h('div', { className: 'dsh-rc-fl' },
-          h('span', null, label),
-          h('div', { className: 'dsh-rc-inline' },
-            h('input', {
-              type: 'number', min: 0, max: 50, value: Math.floor((totalMonths ?? 0) / 12),
-              onChange: event => onChange(Math.max(0, Number(event.target.value)) * 12 + (totalMonths % 12)),
-            }),
-            h('span', { className: 'dsh-rc-note' }, '年'),
-            h('input', {
-              type: 'number', min: 0, max: 11, value: (totalMonths ?? 0) % 12,
-              onChange: event => onChange(Math.floor((totalMonths ?? 0) / 12) * 12 + Math.max(0, Math.min(11, Number(event.target.value)))),
-            }),
-            h('span', { className: 'dsh-rc-note' }, '月'),
-          ),
-        )
 
         const panel = !open || anchor === null ? null : h('div', {
           className: 'dsh-rc-panel',

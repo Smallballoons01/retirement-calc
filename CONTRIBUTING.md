@@ -74,13 +74,22 @@ yearly. When you update one:
 
 ## Tests
 
-Three layers, each catching something the others cannot:
+Four layers, each catching something the others cannot:
 
 1. **Pure logic** (`test/core.test.js`) — the formulas, against published worked examples.
 2. **Fake host context** (`test/plugin.test.js`) — tool behaviour, and every result checked against the
    tool's own declared `output.schema`.
 3. **Real cordis composition** (`test/integration.test.js`) — dependency resolution, skill
    discoverability, clean disposal.
+4. **Client structure** (`test/client-structure.test.js`) — source-level rules for the browser half,
+   which has no other test surface: editing widgets must sit at module scope (defining them inside a
+   component makes every re-render rebuild the subtree and drop input focus), fill colours must not
+   use theme tokens that cannot be verified, and so on. Each rule cites the defect it prevents.
+
+Layer 4 exists because the panel is the one place where a plausible-looking edit silently ruins the
+experience instead of failing loudly. Before adding a rule there, reproduce the defect first — the
+React focus behaviour behind the first rule was confirmed with a minimal React 18.3.1 + jsdom case
+(inner definition replaces the DOM node and loses focus; module-scope definition keeps both).
 
 Two scripts sit outside the test runner on purpose, because they bind ports and shells out to a
 browser: `scripts/verify-web.mjs` and `scripts/verify-plugin.mjs`.
