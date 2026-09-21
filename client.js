@@ -28,41 +28,61 @@ window.__ModuleLoader__.load({
     const PANEL_WIDTH = 340
 
     /*
-     * 配色上的两条纪律，都是踩过坑之后定下来的：
+     * 配色纪律。以下每一条都是被深色主题打脸之后才定下来的。
      *
-     * 1. **填充色不接主题**。`#3055d6` 这个品牌蓝是写死的，不做成
-     *    `var(--dsw-alias-*)`。原因是那些 token 名无法核实：harness 源码、
-     *    已安装的 `dsh-client-ui-theme` 构建产物里都搜不到它们的定义，而
-     *    "看似该是背景色的 token 实际是浅色文字色" 会让选中态变成白底白字。
-     *    宁可少一点主题适配，也不要出现读不出字的状态。
+     * 1. **token 名要对着真实产物核。** 我一度写成 `--dsw-alias-text-primary` /
+     *    `--dsw-alias-text-tertiary` / `--dsw-alias-brand-text`，看着很合理 ——
+     *    但这三个名字**根本不存在**。真实的是一组 `label-*`：
      *
-     * 2. **前景与背景的兜底值必须成对。** 曾经写成
-     *    `background: var(--…, #fff)` 配 `color: var(--…, inherit)`：token
-     *    一旦不生效，就是纯白底配继承来的浅色字。现在两者都兜到浅色主题的
-     *    那一对（`#ffffff` / `#101828`），要么一起跟随主题，要么一起退回浅色。
+     *        文字主色  --dsw-alias-label-primary     (深色主题取 bluish-50，浅色取 bluish-1000)
+     *        次要文字  --dsw-alias-label-secondary
+     *        三级文字  --dsw-alias-label-tertiary
+     *        强调文字  --dsw-alias-brand-primary     (同样是浅/深两极，只能当**文字**色)
+     *
+     *    名字写错的后果不是报错，是静默 fallback：`var(--dsw-alias-label-primary, CanvasText)`
+     *    在深色主题下把正文刷成 `#101828`（对比度 1.03:1），整块文字等于隐形。
+     *    因为 token 是运行时注入的，在源码或 node_modules 里都搜不到 —— 所以核实
+     *    的办法只有一个：**拉起真实实例，把客户端 bundle 拉下来 grep**。
+     *
+     * 2. **`brand-primary` 不能当填充色。** 它在浅色主题下取深色值、深色主题下取
+     *    浅色值（可参考 `bluish-1000` / `bluish-50`），是给文字和图标用的。拿它铺
+     *    按钮背景，就会变成"白底白字"或"浅底白字"。填充色一律用下面这个写死的
+     *    中蓝 —— 它与面板底色有足够区分度（约 2.9:1），配白字是 5.5:1。
+     *
+     * 3. **兜底值要用系统色，不要写死明暗。** `Canvas` / `CanvasText` / `GrayText`
+     *    / `LinkText` / `Highlight` 会跟随浏览器的 color-scheme，所以哪怕是 token
+     *    全丢的极端情况，前景与背景也一定成对。写死 `#fff` 配 `inherit` 是上一次
+     *    的教训：白底 + 继承来的浅色字，正是用户报的"看不清"。
      */
+
+    /** 填充色。写死，理由见上面第 2 条。 */
+    const FILL = '#3d5fd9'
     const STYLE = `
-.dsh-rc-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-text-primary, #101828); font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.dsh-rc-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary, CanvasText); font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .dsh-rc-button:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); }
 .dsh-rc-button .dsh-rc-days { font-weight: 650; }
-.dsh-rc-panel { position: fixed; z-index: 1000; width: ${PANEL_WIDTH}px; max-height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-text-primary, #101828); border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.25)); border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.2); font-size: 12px; }
+.dsh-rc-panel { position: fixed; z-index: 1000; width: ${PANEL_WIDTH}px; max-height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; overflow: hidden; background: var(--dsw-alias-bg-layer-1, Canvas); color: var(--dsw-alias-label-primary, CanvasText); border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.25)); border-radius: 12px; box-shadow: 0 10px 34px rgba(0,0,0,.2); font-size: 12px; }
 .dsh-rc-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.15)); font-weight: 600; }
 .dsh-rc-head .dsh-rc-spacer { flex: 1; }
-.dsh-rc-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-text-tertiary, #888); cursor: pointer; font-size: 13px; }
-.dsh-rc-x:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); color: var(--dsw-alias-text-primary, #101828); }
+.dsh-rc-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-tertiary, GrayText); cursor: pointer; font-size: 13px; }
+.dsh-rc-x:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); color: var(--dsw-alias-label-primary, CanvasText); }
 .dsh-rc-body { overflow-y: auto; padding: 12px; display: grid; gap: 12px; }
 
 .dsh-rc-heroes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .dsh-rc-hero { padding: 10px 11px; border-radius: 10px; background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.07)); }
-.dsh-rc-hero-k { color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; margin-bottom: 3px; }
+.dsh-rc-hero-k { color: var(--dsw-alias-label-tertiary, GrayText); font-size: 11px; margin-bottom: 3px; }
 .dsh-rc-hero-v { font-size: 22px; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .dsh-rc-hero-warm .dsh-rc-hero-v { color: var(--dsw-alias-state-warn-primary, #c77700); }
-.dsh-rc-hero-brand .dsh-rc-hero-v { color: #3055d6; }
-.dsh-rc-hero-n { margin-top: 3px; color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; }
+/* 大数字用**业务主色** —— 它才是这套设计系统里真正的品牌蓝
+   （deepseek-400 #679efe / deepseek-500 #4176e6，明暗主题各取一个，对比度都在 5:1 上下）。
+   这里特意不用 `brand-primary`：那个名字听起来更像品牌色，实际是**中性**强调色，
+   深色主题下取 bluish-50（近白），数字会丢掉色彩层次、跟旁边的白字糊在一起。 */
+.dsh-rc-hero-brand .dsh-rc-hero-v { color: var(--dsw-alias-state-business-primary, LinkText); }
+.dsh-rc-hero-n { margin-top: 3px; color: var(--dsw-alias-label-tertiary, GrayText); font-size: 11px; }
 
 .dsh-rc-rows { display: grid; gap: 5px; }
 .dsh-rc-row { display: flex; align-items: baseline; gap: 8px; }
-.dsh-rc-row span { color: var(--dsw-alias-text-tertiary, #888); }
+.dsh-rc-row span { color: var(--dsw-alias-label-tertiary, GrayText); }
 .dsh-rc-row b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
 .dsh-rc-ok { color: var(--dsw-alias-state-success-primary, #2f9e44); }
 .dsh-rc-bad { color: var(--dsw-alias-state-error-primary, #d64545); }
@@ -71,22 +91,22 @@ window.__ModuleLoader__.load({
 .dsh-rc-split .dsh-rc-row b { font-weight: 500; }
 
 .dsh-rc-sect { border-top: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.15)); padding-top: 10px; }
-.dsh-rc-sect > summary, .dsh-rc-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: var(--dsw-alias-text-primary, #101828); list-style: none; user-select: none; }
+.dsh-rc-sect > summary, .dsh-rc-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: var(--dsw-alias-label-primary, CanvasText); list-style: none; user-select: none; }
 .dsh-rc-sect > summary::-webkit-details-marker { display: none; }
-.dsh-rc-sect > summary::before { content: '▸'; color: var(--dsw-alias-text-tertiary, #888); transition: transform .15s; display: inline-block; }
+.dsh-rc-sect > summary::before { content: '▸'; color: var(--dsw-alias-label-tertiary, GrayText); transition: transform .15s; display: inline-block; }
 .dsh-rc-sect[open] > summary::before { transform: rotate(90deg); }
 .dsh-rc-fields { display: grid; gap: 9px; padding-top: 10px; }
 .dsh-rc-fl { display: grid; gap: 4px; }
-.dsh-rc-fl > label { color: var(--dsw-alias-text-tertiary, #888); }
+.dsh-rc-fl > label { color: var(--dsw-alias-label-tertiary, GrayText); }
 .dsh-rc-inline { display: flex; align-items: center; gap: 6px; }
 .dsh-rc-inline > input[type=number] { width: 62px; }
 .dsh-rc-inline > select { flex: 1; min-width: 0; }
 .dsh-rc-panel input[type=number], .dsh-rc-panel select { box-sizing: border-box; min-height: 28px; padding: 3px 7px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
-.dsh-rc-panel input[type=number]:focus, .dsh-rc-panel select:focus { outline: none; border-color: #3055d6; }
-.dsh-rc-panel input[type=range] { width: 100%; accent-color: #3055d6; }
+.dsh-rc-panel input[type=number]:focus, .dsh-rc-panel select:focus { outline: none; border-color: ${FILL}; }
+.dsh-rc-panel input[type=range] { width: 100%; accent-color: ${FILL}; }
 .dsh-rc-seg { display: flex; gap: 4px; }
 .dsh-rc-seg button { flex: 1; min-height: 28px; padding: 3px 6px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
-.dsh-rc-seg button.dsh-rc-on { border-color: #3055d6; background: #3055d6; color: #fff; font-weight: 600; }
+.dsh-rc-seg button.dsh-rc-on { border-color: ${FILL}; background: ${FILL}; color: #fff; font-weight: 600; }
 .dsh-rc-slider-head { display: flex; justify-content: space-between; align-items: baseline; }
 .dsh-rc-slider-head b { font-variant-numeric: tabular-nums; }
 
@@ -94,18 +114,18 @@ window.__ModuleLoader__.load({
 .dsh-rc-actions button { min-height: 28px; padding: 4px 10px; border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,.35)); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .dsh-rc-actions button:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,.12)); }
 .dsh-rc-actions button:disabled { opacity: .5; cursor: default; }
-.dsh-rc-actions button.dsh-rc-primary { color: #fff; background: #3055d6; border-color: #3055d6; }
+.dsh-rc-actions button.dsh-rc-primary { color: #fff; background: ${FILL}; border-color: ${FILL}; }
 .dsh-rc-actions .dsh-rc-grow { flex: 1; }
 
-.dsh-rc-note { color: var(--dsw-alias-text-tertiary, #888); font-size: 11px; line-height: 1.5; }
+.dsh-rc-note { color: var(--dsw-alias-label-tertiary, GrayText); font-size: 11px; line-height: 1.5; }
 .dsh-rc-warn { color: var(--dsw-alias-state-warn-label, #b57708); font-size: 11px; line-height: 1.5; }
 .dsh-rc-err { color: var(--dsw-alias-state-error-primary, #d64545); font-size: 11px; }
 
-/* 选中文字。dsh 自身没有任何 ::selection 规则（在源码与已安装产物里都搜过），
-   浏览器默认高亮在这套外壳里偏淡，选中面板里的数字时几乎看不出选了什么。
-   这里显式给一对高对比配色，并限定在面板作用域内，不外溢到宿主界面。 */
+/* 选中文字。dsh 自身没有 ::selection 规则（已从真实 bundle 里确认过），浏览器默认
+   高亮在这套外壳里偏淡。用系统色 Highlight / HighlightText：它们由 color-scheme
+   决定，天然成对，深色主题下不会出现浅底浅字。作用域限定在面板内，不外溢。 */
 .dsh-rc-panel ::selection,
-.dsh-rc-panel::selection { background: #cfe0ff; color: #101828; }
+.dsh-rc-panel::selection { background: Highlight; color: HighlightText; }
 `
 
     /* ── 与宿主端通信 ─────────────────────────────────────── */
