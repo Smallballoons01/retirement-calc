@@ -146,7 +146,7 @@ a number is the point.
 ## Development
 
 ```bash
-npm test              # 44 tests: 17 core formula + 15 plugin behaviour + 7 real cordis composition + 5 client structure
+npm test              # 45 tests: 17 core formula + 15 plugin behaviour + 7 real cordis composition + 6 client structure
 npm run verify        # drive the built page in a headless browser: rendering and live recompute
 npm run verify:plugin # mount on a real WebServer, hit /retire/api over HTTP (touches no profile)
 npm run audit         # secret scan: credentials, home paths, private IPs, emails
