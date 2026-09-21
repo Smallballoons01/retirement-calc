@@ -376,6 +376,13 @@ window.__ModuleLoader__.load({
         const categories = catalog?.categories ?? []
         const provinces = catalog?.provinceList ?? catalog?.provinces ?? []
 
+        // 兜底的「当前社平」：省份默认表推算到当前年。
+        // 档案里 baseAmount 常是 0（= 跟随省份默认），所以切到金额模式时的起点基数
+        // 不能用它 —— 0 × 指数还是 0，状态纹丝不动，看起来就像按钮点不动。
+        const pd = data?.provinceDefault
+        const fallbackSocialNow = (pd?.amount ?? profile?.baseAmount ?? 9493)
+          * (1 + (profile?.baseGrowthRate ?? 0.02)) ** (new Date().getFullYear() - (pd?.year ?? 2025))
+
         const panel = !open || anchor === null ? null : h('div', {
           className: 'dsh-rc-panel',
           ref: panelRef,
@@ -503,11 +510,14 @@ window.__ModuleLoader__.load({
                         type: 'button',
                         className: (profile.monthlyBase > 0) === (mode === 'amount') ? 'dsh-rc-on' : '',
                         onClick: () => change(mode === 'amount'
-                          // 切到金额模式时补一个「等于当前档位」的起点，让切换前后结果连续
+                          // 切到金额模式时补一个「等于当前档位」的起点，让切换前后结果连续。
+                          // 注意兜底基数**不能**用 profile.baseAmount：档案里它是 0（= 跟随省份），
+                          // 0 × 指数还是 0，change({ monthlyBase: 0 }) 之后状态纹丝不动，
+                          // 看起来就像按钮点不动。要从省份默认表拿实际数值。
                           ? {
                             monthlyBase: profile.monthlyBase > 0
                               ? profile.monthlyBase
-                              : Math.round(profile.baseAmount * profile.paidIndex),
+                              : Math.round(fallbackSocialNow * (profile.paidIndex || 0.6)),
                           }
                           : { monthlyBase: 0, futureMonthlyBase: 0 }),
                       }, label)),
