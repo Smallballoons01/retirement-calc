@@ -27,3 +27,4 @@ npm-debug.log*
 # 环境变量。本包不使用任何环境变量，列在这里只是为了防止误建。
 .env
 .env.*
+pnpm-lock.yaml

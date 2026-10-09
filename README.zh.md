@@ -109,11 +109,9 @@ open dist/retirement-calculator.html
 ### DSH 插件
 
 ```bash
-# 1. 让包能找到 harness 的 peer 依赖（本机已装 0.1.6-alpha.1）
-mkdir -p retirement_calc/node_modules/@deepseek-ai
-for p in cordis dsh-llm dsh-settings dsh-skill dsh-system-prompt dsh-tools schemastery; do
-  ln -sfn "$HOME/.dsh/profiles/node_modules/@deepseek-ai/$p" "retirement_calc/node_modules/@deepseek-ai/$p"
-done
+# 1. 装上开发依赖（harness 相关包在 npm 上有，但不在 latest 标签下，
+#    所以 package.json 的 devDependencies 里钉的是确切版本）
+pnpm install
 
 # 2. 装进 profile（会改动 profile 的 package.json 与 cordis.patch.yml，建议先备份）
 dsh plugin --profile web add link:/path/to/retirement_calc

@@ -25,10 +25,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      # Deliberately no `npm install`: the package has zero runtime dependencies
-      # and its only packages are host-provided peers that are not on npm, so an
-      # install step would fail for reasons that have nothing to do with the code
-      # under test. Everything below runs on a bare checkout.
+      # The Harness packages this plugin develops against are on npm, but NOT
+      # under the `latest` tag (npm's `latest` for @deepseek-ai/dsh-tools is
+      # still the placeholder 0.0.1-rc.1). devDependencies pins the exact
+      # versions, so a plain install resolves the real harness packages and the
+      # integration layers run instead of skipping.
+      - name: 安装依赖
+        run: npm install --no-package-lock
 
       - name: 敏感信息扫描
         run: npm run audit
