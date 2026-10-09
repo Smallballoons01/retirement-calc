@@ -1,6 +1,6 @@
 {
   "name": "@dsh-plugin/retirement-calc",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Retirement planner for DeepSeek Harness: China's statutory retirement age under the 2025 phased-delay reform, a live countdown, and a projected monthly pension — as a tool, a sidebar panel, and an embedded skill",
   "keywords": [
