@@ -187,6 +187,13 @@ npm run web           # rebuild the single-file page
 layers (plugin behaviour, real composition, live routes) skip themselves with a stated reason rather
 than failing when the peer packages are absent — so a clean clone gets a green, lower-coverage run.
 
+To exercise those layers, install the pinned dev dependencies. They are published to npm but **not
+under the `latest` tag** — npm's `latest` for `@deepseek-ai/dsh-tools` is still the placeholder
+`0.0.1-rc.1`, while this plugin targets **`0.2.1-alpha.4`** (reached through the `alpha` dist-tag).
+Its companion versions are `@deepseek-ai/cordis` `4.0.5-alpha.2` and `@deepseek-ai/schemastery`
+`3.18.5-alpha.2`; pin all three together. `alpha.4` has no dedicated `dsh-0-2-1-*` dist-tag, so the
+exact version strings in `devDependencies` are the only source of truth.
+
 Several tests are deliberate anchors that fire the moment a formula drifts:
 
 - **Published worked examples** — the two problems in Jiangxi Xinyu's bureau article

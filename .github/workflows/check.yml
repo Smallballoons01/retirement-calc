@@ -39,6 +39,19 @@ jobs:
       - name: 单元与集成测试
         run: npm test
 
+      # The harness-dependent layers skip themselves when the peer packages do
+      # not resolve — which is the right behaviour on a clean clone, but on CI
+      # the packages are pinned in devDependencies. A silent skip there would
+      # mean the guard is proving nothing, so assert it never happens.
+      - name: 断言依赖层没有被静默跳过
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/tap.txt
+          if grep -qE '^# skipped [1-9]' /tmp/tap.txt; then
+            echo "::error::harness-dependent tests skipped — the pinned packages did not resolve"
+            exit 1
+          fi
+
       - name: 产物一致性（技能文件 / 单文件网页）
         run: npm run skill:check && npm run web:check
 

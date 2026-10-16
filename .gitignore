@@ -28,3 +28,7 @@ npm-debug.log*
 .env
 .env.*
 pnpm-lock.yaml
+
+# pnpm 11 会在某个钉死的版本未满它的最小发布年龄策略时写这个文件。它记录的是
+# 本机安装时的取舍，不是包本身的属性，所以不入库。
+pnpm-workspace.yaml
