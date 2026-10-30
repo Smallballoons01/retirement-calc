@@ -55,6 +55,12 @@ jobs:
       - name: 产物一致性（技能文件 / 单文件网页）
         run: npm run skill:check && npm run web:check
 
+      # 真机组合：内置工具注册表 + 真实 WebServer，打真 HTTP 路由。
+      # 0.2.2-alpha.2 把工具描述的归属挪到 executor 后，这一层是最先炸的地方
+      # （缺 executor 会抛 TOOL_EXECUTOR_UNAVAILABLE），所以让它进 CI 看着。
+      - name: 真机组合与真实 HTTP 路由
+        run: npm run verify:plugin
+
       # ubuntu-latest ships Google Chrome, which scripts/verify-web.mjs finds on
       # its own. The plugin-level suite skips itself here because the harness
       # packages are not published — that is expected, not a gap to paper over.

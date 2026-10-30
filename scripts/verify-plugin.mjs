@@ -45,12 +45,13 @@ function check(condition, message) {
 async function main() {
   let deps
   try {
-    const [cordis, tools, skill, systemPrompt, webServer, plugin] = await Promise.all([
+    const [cordis, tools, skill, systemPrompt, webServer, nativeExecutor, plugin] = await Promise.all([
       import('@deepseek-ai/cordis'),
       import('@deepseek-ai/dsh-tools'),
       import('@deepseek-ai/dsh-skill'),
       import('@deepseek-ai/dsh-system-prompt'),
       import('@deepseek-ai/dsh-host-webserver'),
+      import('@deepseek-ai/dsh-tool-executor-native'),
       import('../index.js'),
     ])
     deps = {
@@ -58,6 +59,7 @@ async function main() {
       ToolRuntime: tools.default,
       SkillRegistry: skill.default,
       SystemPrompt: systemPrompt.default,
+      NativeToolExecutor: nativeExecutor,
       renderPrompt: systemPrompt.renderPrompt,
       WebServer: webServer.default,
       plugin,
@@ -77,6 +79,8 @@ async function main() {
   await ctx.plugin(SystemPrompt)
   // ToolRuntime 依赖 systemPrompt，顺序不能反。
   await ctx.plugin(ToolRuntime)
+  // 0.2.2-alpha.2 起工具描述归属挪到 executor：组装系统提示前必须挂一个。
+  await ctx.plugin(deps.NativeToolExecutor)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(WebServer, { host: '127.0.0.1', port })
   const fiber = await ctx.plugin(plugin, { stateFile })

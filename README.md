@@ -189,10 +189,16 @@ than failing when the peer packages are absent — so a clean clone gets a green
 
 To exercise those layers, install the pinned dev dependencies. They are published to npm but **not
 under the `latest` tag** — npm's `latest` for `@deepseek-ai/dsh-tools` is still the placeholder
-`0.0.1-rc.1`, while this plugin targets **`0.2.1-alpha.4`** (reached through the `alpha` dist-tag).
-Its companion versions are `@deepseek-ai/cordis` `4.0.5-alpha.2` and `@deepseek-ai/schemastery`
-`3.18.5-alpha.2`; pin all three together. `alpha.4` has no dedicated `dsh-0-2-1-*` dist-tag, so the
+`0.0.1-rc.1`, while this plugin targets **`0.2.2-alpha.2`** (reached through the `alpha` dist-tag).
+Its companion versions are `@deepseek-ai/cordis` `4.0.6-alpha.1` and `@deepseek-ai/schemastery`
+`3.18.6-alpha.1`; pin all three together. `alpha.2` has no dedicated `dsh-0-2-2-*` dist-tag, so the
 exact version strings in `devDependencies` are the only source of truth.
+
+Since `0.2.2-alpha.2` the tool registry no longer owns the model-facing tool descriptions: assembling
+the system prompt asks the registry for its executor and throws `TOOL_EXECUTOR_UNAVAILABLE` when the
+composition has none. A real deployment gets one from `@deepseek-ai/dsh-base`; a composition you build
+by hand has to mount `@deepseek-ai/dsh-tool-executor-native` after the registry, which is what
+`test/integration.test.js` does.
 
 Several tests are deliberate anchors that fire the moment a formula drifts:
 

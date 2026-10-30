@@ -18,14 +18,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /** Harness 包与插件一起解析，缺依赖时给出一条清晰的跳过而不是导入崩溃。 */
-const SKIP_REASON = '需要 DeepSeek Harness 包（@deepseek-ai/cordis、dsh-tools、dsh-skill、dsh-system-prompt）；见 README 的前置条件'
+const SKIP_REASON = '需要 DeepSeek Harness 包（@deepseek-ai/cordis、dsh-tools、dsh-skill、dsh-system-prompt、dsh-tool-executor-native）；见 README 的前置条件'
 const deps = await (async () => {
   try {
-    const [cordis, tools, skill, systemPrompt, plugin, skillModule] = await Promise.all([
+    const [cordis, tools, skill, systemPrompt, nativeExecutor, plugin, skillModule] = await Promise.all([
       import('@deepseek-ai/cordis'),
       import('@deepseek-ai/dsh-tools'),
       import('@deepseek-ai/dsh-skill'),
       import('@deepseek-ai/dsh-system-prompt'),
+      import('@deepseek-ai/dsh-tool-executor-native'),
       import('../index.js'),
       import('../skill.js'),
     ])
@@ -34,6 +35,7 @@ const deps = await (async () => {
       ToolRuntime: tools.default,
       SkillRegistry: skill.default,
       SystemPrompt: systemPrompt.default,
+      NativeToolExecutor: nativeExecutor,
       renderPrompt: systemPrompt.renderPrompt,
       plugin,
       SKILL_NAME: skillModule.SKILL_NAME,
@@ -57,6 +59,10 @@ if (deps.error !== undefined) {
     await ctx.plugin(SystemPrompt)
     // ToolRuntime 依赖 systemPrompt，所以必须在它之后加载。
     await ctx.plugin(ToolRuntime)
+    // 0.2.2-alpha.2 起，工具描述的归属从注册表移到了 executor：
+    // 组装系统提示时会向注册表要 executor，缺了就抛 TOOL_EXECUTOR_UNAVAILABLE。
+    // 组合里必须挂一个 native executor（生产部署由 dsh-base 负责）。
+    await ctx.plugin(deps.NativeToolExecutor)
     await ctx.plugin(SkillRegistry)
     const fiber = await ctx.plugin(plugin, { stateFile: join(directory, 'profile.json'), ...config })
     t.after(async () => {
@@ -163,6 +169,7 @@ if (deps.error !== undefined) {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(deps.NativeToolExecutor)
     await ctx.plugin(SkillRegistry)
 
     const fiber = await ctx.plugin(plugin, { stateFile: join(directory, 'profile.json') })
