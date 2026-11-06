@@ -181,9 +181,9 @@ npm run web           # 重新生成单文件网页
 
 要把那几层也跑起来，就装上钉死的开发依赖。它们已发布到 npm，但**不在 `latest` 通道上**
 （npm 上 `@deepseek-ai/dsh-tools` 的 `latest` 仍只到占位的 `0.0.1-rc.1`，本插件对的是
-**`0.2.2-alpha.2`**，要经 `alpha` 标签解析）。配套版本是 `@deepseek-ai/cordis`
-`4.0.6-alpha.1` 与 `@deepseek-ai/schemastery` `3.18.6-alpha.1`，三者要一起钉。
-`alpha.2` 也没有 `dsh-0-2-2-*` 专属 dist-tag，`devDependencies` 里的版本号字符串是唯一真相。
+**`0.2.2-rc.1`**，要经 `next` 标签解析）。配套版本是 `@deepseek-ai/cordis`
+`4.1.0` 与 `@deepseek-ai/schemastery` `3.19.0`，三者要一起钉。
+`rc.1` 也没有 `dsh-0-2-2-*` 专属 dist-tag，`devDependencies` 里的版本号字符串是唯一真相。
 
 从 `0.2.2-alpha.2` 起，工具描述的归属从工具注册表挪到了 executor：组装系统提示时会向注册表
 要 executor，组合里没有就抛 `TOOL_EXECUTOR_UNAVAILABLE`。生产部署由 `@deepseek-ai/dsh-base`
